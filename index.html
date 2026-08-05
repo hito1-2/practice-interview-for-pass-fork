@@ -1,0 +1,1842 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>面接練習ラボ｜AI模擬面接システム</title>
+<style>
+:root{
+  --ink:#1a2332; --ink-soft:#3d4a5c; --paper:#f5f2ea; --paper-warm:#ebe5d6;
+  --line:#c9bfa8; --accent:#2f5d50; --accent-soft:#4a7a6b; --gold:#b08d3f;
+  --alert:#a4432f; --ok:#3f7a4a; --shadow:rgba(26,35,50,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;background:var(--paper);color:var(--ink);line-height:1.75;-webkit-font-smoothing:antialiased}
+.wrap{max-width:880px;margin:0 auto;padding:0 20px 80px}
+header{border-bottom:2px solid var(--ink);padding:34px 20px 24px;max-width:880px;margin:0 auto}
+.eyebrow{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:11px;letter-spacing:.4em;color:var(--accent);margin-bottom:10px}
+header h1{font-size:30px;font-weight:600;letter-spacing:.06em;line-height:1.3}
+header p{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:13px;color:var(--ink-soft);margin-top:8px}
+.panel{background:#fffdf8;border:1px solid var(--line);border-radius:3px;padding:28px;margin-top:28px;box-shadow:0 2px 14px var(--shadow)}
+.panel h2{font-size:18px;letter-spacing:.08em;margin-bottom:4px;display:flex;align-items:baseline;gap:10px}
+.panel h2 .num{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:12px;color:var(--gold);letter-spacing:.2em}
+.panel .sub{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:12px;color:var(--ink-soft);margin-bottom:20px}
+.field{margin-bottom:18px}
+.field label{display:block;font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.05em;margin-bottom:7px;color:var(--ink-soft)}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg button{flex:1;min-width:108px;font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:13px;padding:11px 10px;cursor:pointer;background:var(--paper);border:1px solid var(--line);border-radius:3px;color:var(--ink-soft);transition:all .15s}
+.seg button:hover{border-color:var(--accent-soft)}
+.seg button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+input[type=text],input[type=password],textarea{width:100%;font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;padding:11px 12px;border:1px solid var(--line);border-radius:3px;background:var(--paper);color:var(--ink);resize:vertical}
+input:focus,textarea:focus{outline:2px solid var(--accent-soft);outline-offset:-1px;border-color:var(--accent)}
+.row{display:flex;gap:14px;flex-wrap:wrap}
+.row .field{flex:1;min-width:200px}
+.hint{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:11px;color:var(--gold);margin-top:5px;line-height:1.65}
+.btn-primary{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:15px;font-weight:600;letter-spacing:.1em;width:100%;padding:16px;cursor:pointer;margin-top:8px;background:var(--ink);color:var(--paper);border:none;border-radius:3px;transition:background .2s}
+.btn-primary:hover{background:var(--accent)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.acc{border:1px solid var(--line);border-radius:3px;margin-bottom:18px;background:var(--paper)}
+.acc summary{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:12.5px;font-weight:600;padding:12px 14px;cursor:pointer;color:var(--ink-soft);list-style:none}
+.acc summary::-webkit-details-marker{display:none}
+.acc summary::before{content:"▸ ";color:var(--gold)}
+.acc[open] summary::before{content:"▾ "}
+.acc .body{padding:0 14px 16px}
+.badge{display:inline-block;font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:10.5px;padding:3px 9px;border-radius:12px;letter-spacing:.05em;margin-left:8px;white-space:nowrap}
+.badge.ai{background:var(--accent);color:#fff}
+.badge.rule{background:var(--paper-warm);color:var(--ink-soft);border:1px solid var(--line)}
+
+/* ===== 面接室 ===== */
+.room{margin-top:28px;display:none}
+.progress-bar{display:flex;gap:6px;margin-bottom:20px}
+.progress-bar span{flex:1;height:4px;background:var(--paper-warm);border-radius:2px;transition:background .4s}
+.progress-bar span.done{background:var(--accent)}
+.progress-bar span.current{background:var(--gold)}
+
+.stage{background:linear-gradient(170deg,#25352f,#1a2332);border-radius:3px;padding:26px 28px 22px;box-shadow:0 4px 20px rgba(26,35,50,.28);position:relative;overflow:hidden}
+.stage::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(232,217,168,.07),transparent 60%);pointer-events:none}
+.stage-inner{display:flex;gap:26px;align-items:flex-start;position:relative;z-index:1}
+.avatar-col{flex:0 0 168px;text-align:center}
+.avatar-frame{width:168px;height:168px;border-radius:50%;background:radial-gradient(circle at 50% 35%,#3a4f47,#22302b);border:2px solid rgba(232,217,168,.3);display:flex;align-items:center;justify-content:center;overflow:hidden;transition:border-color .4s,box-shadow .4s}
+.avatar-frame.listening{border-color:rgba(164,67,47,.75);box-shadow:0 0 0 4px rgba(164,67,47,.14)}
+.avatar-frame.speaking{border-color:rgba(232,217,168,.75);box-shadow:0 0 0 4px rgba(232,217,168,.13)}
+.avatar-frame.thinking{border-color:rgba(176,141,63,.6)}
+#avatarSvg{width:150px;height:150px;transition:transform .35s cubic-bezier(.34,1.4,.64,1)}
+.avatar-name{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:12px;color:#c9d0c5;margin-top:12px;letter-spacing:.08em}
+.avatar-state{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:11px;margin-top:5px;letter-spacing:.06em;min-height:16px}
+.avatar-state.listening{color:#e08a72}
+.avatar-state.speaking{color:#e8d9a8}
+.avatar-state.thinking{color:#b08d3f}
+.avatar-state.idle{color:#8a9690}
+
+.q-col{flex:1;min-width:0}
+.q-meta{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:11px;letter-spacing:.2em;color:#b08d3f;display:flex;justify-content:space-between;margin-bottom:12px}
+.q-text{font-size:20px;line-height:1.65;letter-spacing:.03em;color:var(--paper);min-height:66px}
+.q-intent{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:11.5px;color:#a8b5ad;margin-top:12px;padding-top:11px;border-top:1px dashed rgba(201,191,168,.28);display:none;line-height:1.7}
+.q-intent.show{display:block}
+.q-intent b{color:#e8d9a8}
+
+/* 音量メーター */
+.vu{display:flex;align-items:flex-end;gap:3px;height:22px;margin-top:14px;opacity:0;transition:opacity .3s}
+.vu.on{opacity:1}
+.vu i{flex:1;background:rgba(232,217,168,.3);border-radius:1px;height:3px;transition:height .09s ease,background .09s}
+.countdown{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:11.5px;color:#e08a72;margin-top:8px;min-height:17px;letter-spacing:.04em}
+
+/* 回答表示 */
+.answer-box{margin-top:16px;min-height:96px;padding:15px 17px;background:#fffdf8;border:1px solid var(--line);border-radius:3px;font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;white-space:pre-wrap;color:var(--ink);line-height:1.9}
+.answer-box:focus{outline:2px solid var(--accent-soft);outline-offset:-1px}
+.answer-box.empty{color:#a99;font-style:italic}
+.answer-box .interim{color:#9a9284}
+.meta-line{display:flex;justify-content:space-between;font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:11.5px;margin-top:7px;min-height:18px}
+.meta-line .st{color:var(--alert)}
+.meta-line .ct{color:#8a8272}
+.controls{display:flex;gap:9px;margin-top:16px;flex-wrap:wrap}
+.ctrl{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:12.5px;padding:10px 16px;cursor:pointer;border-radius:3px;border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);transition:all .15s}
+.ctrl:hover{border-color:var(--accent-soft);color:var(--accent)}
+.ctrl.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ctrl.primary:hover{background:var(--accent-soft)}
+.ctrl.rec{background:var(--alert);color:#fff;border-color:var(--alert)}
+.ctrl.rec.active{animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+.ctrl:disabled{opacity:.35;cursor:not-allowed}
+.auto-toggle{display:flex;align-items:center;gap:8px;font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:12px;color:#8a8272;margin-left:auto}
+.auto-toggle input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+
+.loader{text-align:center;padding:40px;display:none}
+.loader .spin{width:34px;height:34px;border:3px solid var(--paper-warm);border-top-color:var(--accent);border-radius:50%;margin:0 auto 14px;animation:rot 1s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+.loader p{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:13px;color:var(--ink-soft)}
+
+/* ===== 結果 ===== */
+.eval{margin-top:20px;display:none}
+.eval-card{background:#fffdf8;border:1px solid var(--line);border-radius:3px;padding:26px 28px;margin-bottom:18px;box-shadow:0 2px 14px var(--shadow)}
+.eval-q{font-size:15px;color:var(--ink-soft);margin-bottom:6px;font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-weight:600}
+.eval-a{font-size:13px;color:#7a7264;margin-bottom:20px;font-family:"Hiragino Kaku Gothic ProN",sans-serif;padding:10px 12px;background:var(--paper);border-radius:3px;line-height:1.8}
+.scores{display:grid;grid-template-columns:1fr 1fr;gap:14px 24px;margin-bottom:20px}
+.score-head{display:flex;justify-content:space-between;align-items:baseline;font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:12.5px;margin-bottom:5px}
+.score-head .name{color:var(--ink-soft);font-weight:600}
+.score-head .val{color:var(--accent);font-weight:700;font-size:14px}
+.meter{height:7px;background:var(--paper-warm);border-radius:4px;overflow:hidden}
+.meter i{display:block;height:100%;background:linear-gradient(90deg,var(--accent-soft),var(--accent));border-radius:4px;transition:width .8s ease}
+.score-note{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:11px;color:#8a8272;margin-top:4px;line-height:1.6}
+.fb-block{margin-bottom:16px}
+.fb-block h4{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:13px;letter-spacing:.08em;margin-bottom:8px;padding-left:10px;border-left:3px solid var(--gold)}
+.fb-block.good h4{border-color:var(--ok)}
+.fb-block.fix h4{border-color:var(--alert)}
+.fb-block ul{list-style:none}
+.fb-block li{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:13.5px;padding:6px 0 6px 20px;position:relative;color:var(--ink-soft);line-height:1.75}
+.fb-block li::before{content:"—";position:absolute;left:0;color:var(--gold)}
+.fb-block.good li::before{content:"✓";color:var(--ok)}
+.fb-block.fix li::before{content:"→";color:var(--alert)}
+.model-ans{background:var(--paper);border:1px dashed var(--line);border-radius:3px;padding:16px;margin-top:8px;font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:13px;color:var(--ink-soft);line-height:1.85}
+.model-ans .tag{font-size:11px;color:var(--gold);letter-spacing:.1em;display:block;margin-bottom:6px}
+.summary-card{background:var(--ink);color:var(--paper);border-radius:3px;padding:30px 32px;margin-bottom:18px}
+.summary-card h3{font-size:19px;letter-spacing:.1em;margin-bottom:6px;font-weight:600}
+.summary-card .overall{font-family:"Hiragino Kaku Gothic ProN",sans-serif;display:flex;align-items:baseline;gap:8px;margin:18px 0}
+.summary-card .overall .big{font-size:46px;font-weight:700;color:#e8d9a8;font-family:serif}
+.summary-card .overall .max{font-size:16px;color:#a8b5a8}
+.summary-card p{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:13.5px;line-height:1.85;color:#d8dcd2}
+.radar-wrap{text-align:center;margin:10px 0 6px}
+.action-list{margin-top:16px;counter-reset:a;list-style:none}
+.action-list li{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:13.5px;padding:7px 0 7px 26px;position:relative;color:#e6e9e2;line-height:1.75}
+.action-list li::before{content:counter(a);counter-increment:a;position:absolute;left:0;top:9px;width:17px;height:17px;background:var(--gold);color:var(--ink);border-radius:50%;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:sans-serif}
+.foot-btns{display:flex;gap:12px;justify-content:center;margin-top:24px;flex-wrap:wrap}
+.foot-btns button{font-family:"Hiragino Kaku Gothic ProN",sans-serif;padding:13px 32px;background:var(--paper);border:1px solid var(--ink);border-radius:3px;color:var(--ink);font-size:14px;letter-spacing:.06em;cursor:pointer}
+.foot-btns button:hover{background:var(--ink);color:var(--paper)}
+.notice{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:11.5px;color:#8a8272;text-align:center;margin-top:30px;padding-top:20px;border-top:1px solid var(--line);line-height:1.9}
+.err{background:#fbeeeb;border:1px solid var(--alert);color:var(--alert);padding:14px 16px;border-radius:3px;margin-top:14px;font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:13px;display:none;line-height:1.7}
+@media(max-width:680px){
+  .stage-inner{flex-direction:column;align-items:center}
+  .avatar-col{flex:none}
+  .q-col{width:100%}
+  .q-text{font-size:18px;text-align:center}
+  .scores{grid-template-columns:1fr}
+  header h1{font-size:24px}
+  .panel{padding:20px}
+}
+@media print{.controls,.foot-btns,.progress-bar,header,.stage{display:none}body{background:#fff}}
+</style>
+</head>
+<body>
+<header>
+  <div class="eyebrow">MOCK INTERVIEW LAB</div>
+  <h1>面接練習ラボ</h1>
+  <p>面接官が質問し、あなたが答える。話し終えると自動で次へ進みます。</p>
+</header>
+
+<div class="wrap">
+<section class="panel" id="setup">
+  <h2><span class="num">STEP 01</span>面接の設定</h2>
+  <p class="sub">状況を入力してください。質問はこの設定に合わせて出題されます。</p>
+
+  <details class="acc" id="apiAcc">
+    <summary>AI評価を使う（Gemini APIキーを設定）<span class="badge rule" id="modeBadge">現在：ルールベース評価</span></summary>
+    <div class="body">
+      <div class="field" style="margin-bottom:8px">
+        <input type="password" id="apiKey" placeholder="AIza... （Google AI Studio で取得）">
+        <div class="hint">キーを入れると質問生成・講評がAIによる高精度なものになります。未入力でもルールベース評価で全機能が動作します。キーはこの端末内にのみ保存されます。</div>
+      </div>
+      <div class="controls" style="margin-top:10px">
+        <button class="ctrl" id="saveKey">保存して有効化</button>
+        <button class="ctrl" id="testKey">接続テスト</button>
+        <button class="ctrl" id="clearKey">キーを削除</button>
+      </div>
+      <div id="testResult" style="display:none;margin-top:12px;padding:14px 16px;border-radius:3px;font-family:'Hiragino Kaku Gothic ProN',sans-serif;font-size:12.5px;line-height:1.9"></div>
+    </div>
+  </details>
+
+  <div class="field">
+    <label>面接の種類</label>
+    <div class="seg" id="segType">
+      <button data-v="就職" class="on">就職（企業面接）</button>
+      <button data-v="進学">進学（大学・専門）</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label>志望先（企業名・学校名／学部学科）</label>
+      <input type="text" id="target" placeholder="例：県内の自動車部品製造業／〇〇大学 情報学部">
+      <div class="hint">実名を伏せても構いません</div>
+    </div>
+    <div class="field">
+      <label>志望職種・分野</label>
+      <input type="text" id="role" placeholder="例：製造技術職／情報系">
+    </div>
+  </div>
+
+  <div class="field">
+    <label>アピールしたいこと・自己PRの軸（任意）</label>
+    <textarea id="strength" rows="2" placeholder="例：3年間続けた部活での継続力／文化祭実行委員での調整役"></textarea>
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label>質問数</label>
+      <div class="seg" id="segCount">
+        <button data-v="3">3問</button><button data-v="5" class="on">5問</button><button data-v="7">7問</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>難易度</label>
+      <div class="seg" id="segLevel">
+        <button data-v="基礎" class="on">基礎</button><button data-v="標準">標準</button><button data-v="実践">実践</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label>進行モード</label>
+      <div class="seg" id="segMode">
+        <button data-v="auto" class="on">自動進行（推奨）</button>
+        <button data-v="manual">手動操作</button>
+      </div>
+      <div class="hint" id="modeHint">質問の読み上げ後に自動で録音を開始し、無音が続くと自動で確定して次の質問に進みます。</div>
+    </div>
+    <div class="field">
+      <label>無音で確定するまでの時間</label>
+      <div class="seg" id="segSilence">
+        <button data-v="2000">2秒（速い）</button><button data-v="3000" class="on">3秒（標準）</button><button data-v="4500">4.5秒（ゆっくり）</button>
+      </div>
+      <div class="hint">考える時間が必要な生徒には長めを推奨します。</div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>面接官の声</label>
+    <select id="voiceSel" style="width:100%;font-family:'Hiragino Kaku Gothic ProN',sans-serif;font-size:14px;padding:11px 12px;border:1px solid var(--line);border-radius:3px;background:var(--paper);color:var(--ink)">
+      <option>読み込み中…</option>
+    </select>
+    <div class="controls" style="margin-top:8px">
+      <button class="ctrl" id="voiceTest">この声を聞いてみる</button>
+    </div>
+    <div class="hint" id="voiceHint"></div>
+  </div>
+
+  <div class="field">
+    <label>回答の入力方法</label>
+    <div class="seg" id="segInput">
+      <button data-v="voice" class="on">音声（マイク）</button>
+      <button data-v="text">キーボード入力</button>
+    </div>
+    <div class="hint" id="micHint">音声認識はChrome / Edge推奨。マイクの許可が必要です。<br>※ファイルを直接開くと音声認識が使えない場合があります。その際は自動でキーボード入力に切り替わります。</div>
+  </div>
+
+  <button class="btn-primary" id="startBtn">面接をはじめる</button>
+  <div id="originWarn" style="display:none;margin-top:14px;padding:14px 16px;border-radius:3px;background:#fdf7e8;border:1px solid #b08d3f;font-family:'Hiragino Kaku Gothic ProN',sans-serif;font-size:12.5px;color:#7a5c50;line-height:1.85"></div>
+  <div class="err" id="setupErr"></div>
+</section>
+
+<!-- ===== 面接室 ===== -->
+<section class="room" id="room">
+  <div class="progress-bar" id="progress"></div>
+
+  <div class="stage">
+    <div class="stage-inner">
+      <div class="avatar-col">
+        <div class="avatar-frame" id="avatarFrame">
+          <svg id="avatarSvg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#f0d5bc"/><stop offset="100%" stop-color="#dfbb9d"/>
+              </linearGradient>
+              <linearGradient id="suit" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#2c3a44"/><stop offset="100%" stop-color="#1b262e"/>
+              </linearGradient>
+              <linearGradient id="hairG" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#3b3a38"/><stop offset="100%" stop-color="#26251f"/>
+              </linearGradient>
+            </defs>
+            <g>
+              <!-- 肩・スーツ -->
+              <path d="M40 200 Q42 156 74 146 L126 146 Q158 156 160 200 Z" fill="url(#suit)"/>
+              <path d="M100 146 L88 200 L100 200 L112 200 L100 146Z" fill="#f2efe6"/>
+              <path d="M100 150 L92 166 L100 178 L108 166 Z" fill="#8c3b34"/>
+              <path d="M88 146 L100 168 L82 200 L74 146Z" fill="#354550" opacity=".85"/>
+              <path d="M112 146 L100 168 L118 200 L126 146Z" fill="#354550" opacity=".85"/>
+              <!-- 首 -->
+              <rect x="88" y="122" width="24" height="30" rx="10" fill="#dcb595"/>
+              <!-- 頭 -->
+              <g id="head">
+                <ellipse cx="100" cy="88" rx="42" ry="47" fill="url(#skin)"/>
+                <!-- 耳 -->
+                <ellipse cx="58" cy="92" rx="6" ry="9" fill="#dfbb9d"/>
+                <ellipse cx="142" cy="92" rx="6" ry="9" fill="#dfbb9d"/>
+                <!-- 髪 -->
+                <path d="M58 82 Q60 40 100 40 Q140 40 142 82 Q140 62 128 58 Q112 66 100 62 Q84 66 72 58 Q60 62 58 82Z" fill="url(#hairG)"/>
+                <!-- 眉 -->
+                <path d="M74 74 Q84 70 92 73" stroke="#3b3a38" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+                <path d="M108 73 Q116 70 126 74" stroke="#3b3a38" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+                <!-- 目 -->
+                <g id="eyes">
+                  <ellipse id="eyeL" cx="83" cy="88" rx="7.5" ry="5.4" fill="#fff"/>
+                  <ellipse id="eyeR" cx="117" cy="88" rx="7.5" ry="5.4" fill="#fff"/>
+                  <circle id="pupL" cx="83" cy="88" r="3.4" fill="#2a2622"/>
+                  <circle id="pupR" cx="117" cy="88" r="3.4" fill="#2a2622"/>
+                  <circle cx="84.6" cy="86.6" r="1.1" fill="#fff" opacity=".9"/>
+                  <circle cx="118.6" cy="86.6" r="1.1" fill="#fff" opacity=".9"/>
+                </g>
+                <!-- 鼻 -->
+                <path d="M100 92 Q97 102 101 104" stroke="#c99b7c" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <!-- 口 -->
+                <ellipse id="mouth" cx="100" cy="114" rx="10" ry="1.6" fill="#a8574c"/>
+                <!-- メガネ -->
+                <g opacity=".75" stroke="#4a4a46" stroke-width="2" fill="none">
+                  <circle cx="83" cy="88" r="13"/><circle cx="117" cy="88" r="13"/>
+                  <path d="M96 88 L104 88"/><path d="M70 86 L60 89"/><path d="M130 86 L140 89"/>
+                </g>
+              </g>
+            </g>
+          </svg>
+        </div>
+        <div class="avatar-name">面接官</div>
+        <div class="avatar-state idle" id="avatarState">準備中</div>
+      </div>
+
+      <div class="q-col">
+        <div class="q-meta">
+          <span id="qCounter">質問 1</span>
+          <span><span id="engineLive" style="margin-right:12px;padding:2px 9px;border-radius:11px;font-size:10px;letter-spacing:.05em"></span><span id="qCat">動機</span></span>
+        </div>
+        <div class="q-text" id="qText">…</div>
+        <div class="q-intent" id="qIntent"></div>
+        <div class="vu" id="vu"></div>
+        <div class="countdown" id="countdown"></div>
+        <div id="micLive" style="font-family:'Hiragino Kaku Gothic ProN',sans-serif;font-size:10.5px;color:#7f8f88;margin-top:6px;letter-spacing:.05em;display:none">
+          ● マイク接続中（面接終了まで保持されます）
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="answer-box empty" id="answerBox">ここに回答が入ります。</div>
+  <div class="meta-line"><span class="st" id="micStatus"></span><span class="ct" id="charCount"></span></div>
+
+  <div class="controls">
+    <button class="ctrl" id="replayBtn">🔊 もう一度聞く</button>
+    <button class="ctrl" id="intentBtn">質問の意図</button>
+    <button class="ctrl rec" id="recBtn">● 録音</button>
+    <button class="ctrl" id="clearBtn">やり直す</button>
+    <button class="ctrl primary" id="nextBtn">確定して次へ →</button>
+    <label class="auto-toggle"><input type="checkbox" id="autoChk" checked>自動進行</label>
+  </div>
+</section>
+
+<div class="loader" id="loader">
+  <div class="spin"></div>
+  <p id="loaderMsg">回答を分析しています…</p>
+</div>
+
+<section class="eval" id="eval"></section>
+
+<div class="notice">
+  このシステムは練習用です。評価は目安であり、実際の合否を示すものではありません。<br>
+  個人情報保護のため、氏名など特定できる情報の入力は避けてください。
+</div>
+</div>
+
+<script>
+/* ================================================================
+   面接練習ラボ  自動進行版
+   ================================================================ */
+/* DOM取得ヘルパー（同一要素は再検索せずキャッシュする） */
+const _dom={};
+const $=id=>(_dom[id]||(_dom[id]=document.getElementById(id)));
+/* 自動進行が有効かどうかの判定を1箇所に集約 */
+const isAuto=()=>$("autoChk").checked;
+/* 音声合成で使う声の一覧と選択中の声（早い段階で参照されるため先に宣言する） */
+let voiceList=[],chosenVoice=null;
+
+/* 評価5観点の定義（全体で共有する唯一の定義） */
+const AXES=["結論","具体性","接続","論理","熱意"];
+const AXIS_LABEL={結論:"結論の明確さ",具体性:"具体性",接続:"志望先との接続",論理:"論理性・一貫性",熱意:"熱意・人柄"};
+const AXIS_SHORT=["結論","具体","接続","論理","熱意"];
+
+const S={type:"就職",target:"",role:"",strength:"",count:5,level:"基礎",input:"voice",
+  mode:"auto",silence:3000,questions:[],current:0,answers:[],evals:[],confidences:[],apiKey:"",busy:false};
+
+const LS={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},
+  set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},
+  del:k=>{try{localStorage.removeItem(k)}catch(e){}}};
+
+function bindSeg(id,key,cb){
+  document.querySelectorAll("#"+id+" button").forEach(b=>{
+    b.onclick=()=>{
+      document.querySelectorAll("#"+id+" button").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on");
+      S[key]=isNaN(b.dataset.v)?b.dataset.v:parseInt(b.dataset.v);
+      if(cb)cb(b.dataset.v);
+    };
+  });
+}
+bindSeg("segType","type");bindSeg("segCount","count");bindSeg("segLevel","level");
+bindSeg("segSilence","silence");
+bindSeg("segInput","input",v=>{$("micHint").style.display=v==="voice"?"block":"none"});
+bindSeg("segMode","mode",v=>{
+  $("modeHint").textContent = v==="auto"
+    ? "質問の読み上げ後に自動で録音を開始し、無音が続くと自動で確定して次の質問に進みます。"
+    : "録音の開始・停止・次へをすべて自分で操作します。";
+  $("autoChk").checked=(v==="auto");
+});
+
+/* ---------- APIキー ---------- */
+function refreshBadge(){
+  const b=$("modeBadge");
+  if(S.apiKey){b.className="badge ai";b.textContent="現在：AI評価（Gemini）";}
+  else{b.className="badge rule";b.textContent="現在：ルールベース評価";}
+}
+/* 面接画面の常時インジケーター。実際に使われているエンジンを表示する */
+function refreshEngineLive(state){
+  const el=$("engineLive");if(!el)return;
+  const on=S.apiKey&&geminiModel;
+  if(state==="fallback"){
+    el.style.background="#8c5a2b";el.style.color="#fff";
+    el.textContent="ルールベース評価（AI接続失敗）";
+  }else if(on){
+    el.style.background="#2f5d50";el.style.color="#fff";
+    el.textContent="AI評価 "+geminiModel;
+  }else if(S.apiKey){
+    el.style.background="#b08d3f";el.style.color="#fff";
+    el.textContent="AI接続を確認中";
+  }else{
+    el.style.background="rgba(201,191,168,.22)";el.style.color="#c9d0c5";
+    el.textContent="ルールベース評価";
+  }
+}
+(function(){const k=LS.get("mensetsu_key");if(k){S.apiKey=k;$("apiKey").value=k;}refreshBadge();})();
+
+/* ---------- 面接官の声の選択 ---------- */
+if(window.speechSynthesis){
+  window.speechSynthesis.onvoiceschanged=()=>populateVoiceSelect();
+  populateVoiceSelect();
+  /* 一部ブラウザは voiceschanged を発火しないため、数回追いかける */
+  [300,900,2000].forEach(t=>setTimeout(populateVoiceSelect,t));
+}
+$("voiceSel").onchange=e=>{
+  chosenVoice=voiceList.find(v=>v.name===e.target.value)||chosenVoice;
+  LS.set("mensetsu_voice",e.target.value);
+  populateVoiceSelect();
+};
+$("voiceTest").onclick=()=>{
+  const t=$("voiceTest");
+  t.disabled=true;t.textContent="再生中…";
+  speak("それでは面接を始めます。まず、自己紹介をお願いします。",()=>{
+    t.disabled=false;t.textContent="この声を聞いてみる";
+  });
+};
+
+/* 起動時の環境診断。file:// では許可が記憶されず、
+   質問のたびにマイク確認が出るため、事前に知らせる。 */
+(function checkOrigin(){
+  const w=$("originWarn");if(!w)return;
+  const isFile=location.protocol==="file:";
+  const secure=window.isSecureContext===true;
+  if(isFile){
+    w.style.display="block";
+    w.innerHTML="<b>⚠ ファイルを直接開いています</b><br>"+
+      "この状態ではブラウザがマイク許可を記憶できないため、<b>質問のたびに許可を求められます</b>。"+
+      "音声認識が途中で止まることもあります。<br><br>"+
+      "安定して使うには、次のいずれかで開いてください。<br>"+
+      "・このファイルのあるフォルダで <code>python -m http.server 8000</code> を実行し、"+
+      "<code>http://localhost:8000/</code> を開く<br>"+
+      "・GitHub Pages などHTTPSの場所に置く（同梱の「公開手順.md」を参照）<br><br>"+
+      "このまま試す場合は、入力方法で<b>キーボード入力</b>をお選びください。";
+  }else if(!secure){
+    w.style.display="block";
+    w.innerHTML="<b>⚠ 安全な接続ではありません</b><br>"+
+      "HTTPSまたはlocalhost以外では、マイクが使用できない場合があります。";
+  }
+})();
+$("saveKey").onclick=()=>{
+  S.apiKey=$("apiKey").value.trim();
+  S.apiKey?LS.set("mensetsu_key",S.apiKey):LS.del("mensetsu_key");
+  refreshBadge();$("apiAcc").open=false;
+};
+$("clearKey").onclick=()=>{
+  S.apiKey="";$("apiKey").value="";LS.del("mensetsu_key");geminiModel=null;refreshBadge();
+  $("testResult").style.display="none";
+};
+
+/* ---------- 接続テスト（AI評価が本当に動くかを実測する） ---------- */
+$("testKey").onclick=async()=>{
+  const key=$("apiKey").value.trim();
+  const box=$("testResult");
+  box.style.display="block";
+  if(!key){
+    box.style.background="#fbeeeb";box.style.border="1px solid #a4432f";box.style.color="#a4432f";
+    box.innerHTML="APIキーが入力されていません。";return;
+  }
+  S.apiKey=key;geminiModel=null;geminiKeyValid=null;modelIndex=0;
+  box.style.background="#f5f2ea";box.style.border="1px solid #c9bfa8";box.style.color="#3d4a5c";
+  box.innerHTML="診断中… <span style='color:#b08d3f'>①使えるモデルを探しています</span>";
+
+  const log=[];
+  const t0=performance.now();
+  try{
+    /* ① 実際に通信して使えるモデルを決定 */
+    const model=await resolveGeminiModel(true);
+    log.push(`✅ <b>APIキー</b>：有効`);
+    log.push(`✅ <b>使用モデル</b>：<code>${esc(model)}</code>`);
+    if(modelCandidates.length>1)
+      log.push(`<span style="color:#8a8272;font-size:11.5px">控えの候補：${esc(modelCandidates.slice(1,4).join(", "))}</span>`);
+    box.innerHTML=log.join("<br>")+"<br>診断中… <span style='color:#b08d3f'>②評価テスト</span>";
+
+    /* ② 実際の面接回答で評価させ、内容の妥当性を確認 */
+    const sampleQ={q:"あなたの長所を教えてください。",category:"自己PR",intent:"自己理解を見ています。"};
+    const sampleA="私の長所は継続力です。なぜなら、3年間バスケットボール部の朝練を一日も欠かさず続けたからです。この継続力を仕事でも活かしたいと考えています。";
+    const saveTarget=S.target,saveType=S.type;
+    S.target=S.target||"県内の製造業";S.type=S.type||"就職";
+    const ev=await evalAI(sampleQ,sampleA);
+    S.target=saveTarget;S.type=saveType;
+    const ms=Math.round(performance.now()-t0);
+
+    const checks=[];
+    const scoreOK=AXES.every(k=>typeof ev.scores?.[k]==="number"&&ev.scores[k]>=0&&ev.scores[k]<=5);
+    checks.push([scoreOK,"5観点のスコアが0〜5で返却"]);
+    checks.push([Array.isArray(ev.good)&&ev.good.length>0,"良かった点の生成"]);
+    checks.push([Array.isArray(ev.fix)&&ev.fix.length>0,"改善ヒントの生成"]);
+    checks.push([typeof ev.model==="string"&&ev.model.length>10,"答え方の型の生成"]);
+    checks.forEach(([ok,label])=>log.push(`${ok?"✅":"⚠️"} <b>${label}</b>`));
+    log.push(`⏱ <b>応答時間</b>：${ms}ms`);
+
+    const allOK=scoreOK&&checks.every(c=>c[0]);
+    log.push(`<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #c9bfa8">
+      <b style="color:${allOK?"#3f7a4a":"#b08d3f"}">${allOK?"AI評価は正常に動作します":"一部の項目に問題があります"}</b><br>
+      <span style="color:#8a8272;font-size:11.5px">テスト回答の採点：
+      ${AXES.map(k=>`${AXIS_LABEL[k]} ${ev.scores[k]}`).join(" / ")}</span></div>`);
+    box.style.background=allOK?"#eef5ee":"#fdf7e8";
+    box.style.border="1px solid "+(allOK?"#3f7a4a":"#b08d3f");
+    box.innerHTML=log.join("<br>");
+    LS.set("mensetsu_key",key);refreshBadge();
+  }catch(e){
+    const msg=geminiLastError||e.message;
+    const isQuota=/429|上限|レート/.test(msg);
+    const isKey=geminiKeyValid===false;
+    box.style.background=isQuota?"#fdf7e8":"#fbeeeb";
+    box.style.border="1px solid "+(isQuota?"#b08d3f":"#a4432f");
+    box.style.color=isQuota?"#7a5c50":"#a4432f";
+    /* キーが有効だと判明している場合は、その旨を先に伝える */
+    if(geminiKeyValid===true)log.unshift("✅ <b>APIキー</b>：有効（キーの問題ではありません）");
+    log.push(`❌ <b>失敗</b>：${esc(msg)}`);
+    if(isQuota){
+      log.push(`<div style="margin-top:8px;font-size:11.5px;line-height:1.9">
+        <b>無料枠の上限に達しています。</b>キーは正常です。<br>
+        ・1〜2分おいてから、もう一度お試しください<br>
+        ・連続で面接を行うと上限に達しやすくなります<br>
+        ・Google AI Studio で課金を有効にすると上限が大きく緩和されます<br>
+        <b>この状態でもルールベース評価で全機能が動作します。</b></div>`);
+    }else if(isKey){
+      log.push(`<div style="margin-top:8px;font-size:11.5px;line-height:1.9">
+        ・キーの貼り間違い（前後の空白・改行）を確認してください<br>
+        ・Google AI Studio でキーが有効か確認してください</div>`);
+    }else{
+      log.push(`<div style="margin-top:8px;font-size:11.5px;line-height:1.9">
+        ・校内ネットワークが googleapis.com を遮断していないか確認してください<br>
+        ・時間をおいて再試行してください<br>
+        <b>この状態でもルールベース評価で全機能が動作します。</b></div>`);
+    }
+    box.innerHTML=log.join("<br>");
+  }
+};
+
+/* ================================================================
+   アバター制御
+   ================================================================ */
+const AV={
+  frame:null,state:null,mouth:null,head:null,
+  blinkTimer:null,mouthTimer:null,nodTimer:null,current:"idle",
+  init(){
+    this.frame=$("avatarFrame");
+    this.state=$("avatarState");
+    this.mouth=$("mouth");
+    this.head=$("head");
+    this.svg=$("avatarSvg");
+    this.startBlink();
+  },
+  /* まばたき（常時） */
+  startBlink(){
+    const blink=()=>{
+      const eyes=[$("eyeL"),$("eyeR")];
+      const pups=[$("pupL"),$("pupR")];
+      eyes.forEach(e=>e.setAttribute("ry","0.6"));
+      pups.forEach(p=>p.setAttribute("r","0.4"));
+      setTimeout(()=>{
+        eyes.forEach(e=>e.setAttribute("ry","5.4"));
+        pups.forEach(p=>p.setAttribute("r","3.4"));
+      },115);
+      this.blinkTimer=setTimeout(blink,2200+Math.random()*3200);
+    };
+    this.blinkTimer=setTimeout(blink,1600);
+  },
+  set(mode,label){
+    this.current=mode;
+    if(!this.frame||!this.state)return;   /* 面接開始前は何もしない */
+    this.frame.className="avatar-frame "+mode;
+    this.state.className="avatar-state "+mode;
+    this.state.textContent=label;
+    this.stopMouth();this.stopNod();
+    if(mode==="speaking")this.startMouth();
+    if(mode==="listening")this.startNod();
+    if(mode==="thinking")this.think();
+  },
+  /* 発話：口パク */
+  startMouth(){
+    let t=0;
+    this.mouthTimer=setInterval(()=>{
+      t++;
+      const ry=1.6+Math.abs(Math.sin(t*0.9))*5.2+Math.random()*1.4;
+      const rx=10-Math.abs(Math.sin(t*0.9))*2.2;
+      this.mouth.setAttribute("ry",ry.toFixed(1));
+      this.mouth.setAttribute("rx",rx.toFixed(1));
+    },95);
+  },
+  stopMouth(){
+    if(this.mouthTimer)clearInterval(this.mouthTimer);
+    this.mouthTimer=null;
+    this.mouth.setAttribute("ry","1.6");this.mouth.setAttribute("rx","10");
+  },
+  /* 傾聴：うなずき */
+  startNod(){
+    let n=0;
+    this.nodTimer=setInterval(()=>{
+      n++;
+      if(n%4===0){
+        this.head.style.transition="transform .32s ease";
+        this.head.style.transform="translateY(3.5px)";
+        setTimeout(()=>{this.head.style.transform="translateY(0)"},330);
+      }
+    },900);
+    /* 傾聴時はやや微笑 */
+    this.mouth.setAttribute("ry","2.4");
+  },
+  stopNod(){
+    if(this.nodTimer)clearInterval(this.nodTimer);
+    this.nodTimer=null;
+    this.head.style.transform="translateY(0)";
+  },
+  /* 思考：視線を上へ */
+  think(){
+    const pl=$("pupL"),pr=$("pupR");
+    pl.setAttribute("cy","85.5");pr.setAttribute("cy","85.5");
+    setTimeout(()=>{pl.setAttribute("cy","88");pr.setAttribute("cy","88")},1400);
+  },
+  /* 視線をわずかに動かす */
+  glance(){
+    const pl=$("pupL"),pr=$("pupR");
+    const dx=(Math.random()-0.5)*2.4;
+    pl.setAttribute("cx",(83+dx).toFixed(1));pr.setAttribute("cx",(117+dx).toFixed(1));
+  }
+};
+setInterval(()=>{if(AV.frame&&sessionActive&&AV.current!=="speaking")AV.glance()},3400);
+
+/* ================================================================
+   音量メーター（Web Audio）
+   ================================================================ */
+/* --- MIC：面接開始時に一度だけ取得し、終了まで保持し続ける --- */
+const MIC={stream:null,ctx:null,analyser:null,granted:false,
+  _buf:null,noiseFloor:8,calibrated:false,
+  /* 面接開始時に1回だけ呼ぶ。以降は再取得しない＝許可ダイアログは1回のみ */
+  async acquire(){
+    if(this.granted&&this.stream&&this.stream.active)return true;
+    try{
+      this.stream=await navigator.mediaDevices.getUserMedia({
+        audio:{
+          echoCancellation:{ideal:true},   /* スピーカー音の回り込みを抑制 */
+          noiseSuppression:{ideal:true},
+          autoGainControl:{ideal:true}
+        }});
+      this.ctx=new (window.AudioContext||window.webkitAudioContext)();
+      const src=this.ctx.createMediaStreamSource(this.stream);
+      this.analyser=this.ctx.createAnalyser();
+      this.analyser.fftSize=512;this.analyser.smoothingTimeConstant=.6;
+      src.connect(this.analyser);
+      this._buf=new Uint8Array(this.analyser.frequencyBinCount);
+      this.granted=true;
+      return true;
+    }catch(e){this.granted=false;return false}
+  },
+  /* 現在の入力レベル（0〜255）。人の声の帯域に重みを置いて測る。 */
+  level(){
+    if(!this.analyser||!this._buf)return 0;
+    this.analyser.getByteFrequencyData(this._buf);
+    /* 音声の主要帯域（およそ 150Hz〜4kHz）に相当する範囲だけを見る。
+       空調音などの低周波を拾って誤検知するのを防ぐ。 */
+    const rate=this.ctx?this.ctx.sampleRate:48000;
+    const binHz=rate/2/this._buf.length;
+    const lo=Math.max(1,Math.floor(150/binHz));
+    const hi=Math.min(this._buf.length-1,Math.ceil(4000/binHz));
+    let sum=0,n=0;
+    for(let i=lo;i<=hi;i++){sum+=this._buf[i];n++}
+    return n?sum/n:0;
+  },
+  /* 開始時に環境ノイズを測り、判定のしきい値を教室ごとに合わせる */
+  async calibrate(ms){
+    if(!this.analyser)return;
+    const t0=Date.now(),samples=[];
+    while(Date.now()-t0<(ms||1200)){
+      samples.push(this.level());
+      await new Promise(r=>setTimeout(r,60));
+    }
+    samples.sort((a,b)=>a-b);
+    /* 外れ値を避けるため中央値付近を採用 */
+    const med=samples[Math.floor(samples.length*0.6)]||8;
+    this.noiseFloor=Math.max(4,med);
+    this.calibrated=true;
+  },
+  /* いま声が出ているか。環境ノイズより明確に大きいことを条件にする。 */
+  isVoice(){
+    return this.level()>this.noiseFloor+VAD_MARGIN;
+  },
+  async resume(){
+    if(this.ctx&&this.ctx.state==="suspended"){try{await this.ctx.resume()}catch(_){}}
+  },
+  release(){
+    if(this.stream)this.stream.getTracks().forEach(t=>t.stop());
+    if(this.ctx&&this.ctx.state!=="closed")this.ctx.close().catch(()=>{});
+    this.stream=null;this.ctx=null;this.analyser=null;this._buf=null;
+    this.granted=false;this.calibrated=false;
+  }
+};
+/* 環境ノイズにこれだけ上乗せした値を超えたら「発話中」とみなす */
+const VAD_MARGIN=11;
+
+/* --- VU：表示のみを担当。マイクの取得・解放は一切行わない --- */
+const VU={bars:[],raf:null,
+  build(){
+    const el=$("vu");el.innerHTML="";
+    this.bars=[];
+    for(let i=0;i<28;i++){const b=document.createElement("i");el.appendChild(b);this.bars.push(b)}
+  },
+  show(){
+    if(!MIC.analyser)return;
+    $("vu").classList.add("on");
+    if(this.raf)cancelAnimationFrame(this.raf);
+    const data=new Uint8Array(MIC.analyser.frequencyBinCount);
+    const tick=()=>{
+      if(!MIC.analyser){return}
+      MIC.analyser.getByteFrequencyData(data);
+      const n=this.bars.length;
+      for(let i=0;i<n;i++){
+        const v=data[Math.floor(i*data.length/n/2)]||0;
+        this.bars[i].style.height=(3+(v/255)*19)+"px";
+        this.bars[i].style.background=v>60?"rgba(232,217,168,.85)":"rgba(232,217,168,.3)";
+      }
+      this.raf=requestAnimationFrame(tick);
+    };
+    tick();
+  },
+  hide(){
+    if(this.raf)cancelAnimationFrame(this.raf);
+    this.raf=null;
+    $("vu").classList.remove("on");
+    this.bars.forEach(b=>{b.style.height="3px";b.style.background="rgba(232,217,168,.3)"});
+  }
+};
+
+/* ================================================================
+   質問バンク・ルールベース評価（前版から継承）
+   ================================================================ */
+const BANK={
+  就職:{
+    動機:[
+      {q:"まず、自己紹介をお願いします。",intent:"第一印象と、要点を簡潔にまとめる力を見ています。"},
+      {q:"当社を志望した理由を教えてください。",intent:"企業研究の深さと、志望の本気度を確かめています。"},
+      {q:"数ある企業の中で、なぜ当社なのですか。",intent:"他社ではなくここを選ぶ理由が言語化できているかを見ています。"},
+      {q:"この仕事のどこに魅力を感じましたか。",intent:"仕事内容を正しく理解しているかを確認しています。"}],
+    自己PR:[
+      {q:"あなたの長所と、それが表れた経験を教えてください。",intent:"自己理解と、抽象語を具体例で裏づける力を見ています。"},
+      {q:"高校3年間で最も力を入れたことは何ですか。",intent:"継続性と、物事への取り組み方を確かめています。"},
+      {q:"自分を一言で表すと何ですか。理由も教えてください。",intent:"自己分析の深さと表現力を見ています。"}],
+    経験:[
+      {q:"困難にぶつかった経験と、どう乗り越えたかを教えてください。",intent:"課題解決の思考プロセスとねばり強さを見ています。"},
+      {q:"チームで何かに取り組んだ経験を教えてください。",intent:"協働の中での自分の役割を自覚できているかを見ています。"},
+      {q:"人と意見が食い違ったとき、どう対応しましたか。",intent:"対人調整力と、他者理解の姿勢を確かめています。"}],
+    価値観:[
+      {q:"仕事をする上で、あなたが最も大切にしたいことは何ですか。",intent:"価値観が社風と合うかを見ています。"},
+      {q:"あなたの短所は何ですか。どう向き合っていますか。",intent:"自己認識の正直さと、改善への姿勢を見ています。"}],
+    将来性:[
+      {q:"入社後、どのように成長していきたいですか。",intent:"長く働く意思と、キャリアの現実的な見通しを確かめています。"},
+      {q:"5年後、どんな社会人になっていたいですか。",intent:"将来像の具体性と、企業での実現可能性を見ています。"}],
+    対応力:[
+      {q:"今のお話について、もう少し具体的に教えてもらえますか。",intent:"深掘りに耐えられる実体験があるかを確かめています。"},
+      {q:"あなたを採用すると、当社にどんな良いことがありますか。",intent:"自分の強みを相手の利益に変換できるかを見ています。"},
+      {q:"もし希望と違う部署に配属されたら、どうしますか。",intent:"柔軟性と、組織で働く覚悟を確かめています。"}]
+  },
+  進学:{
+    動機:[
+      {q:"まず、自己紹介をお願いします。",intent:"第一印象と、要点を簡潔にまとめる力を見ています。"},
+      {q:"本学部を志望した理由を教えてください。",intent:"学部研究の深さと学びへの本気度を確かめています。"},
+      {q:"他大学ではなく本学を選んだ理由は何ですか。",intent:"進学先を選ぶ主体的な判断ができているかを見ています。"},
+      {q:"この分野に興味を持ったきっかけを教えてください。",intent:"学問的関心の源泉と、その持続性を見ています。"}],
+    自己PR:[
+      {q:"高校3年間で最も力を入れて学んだことは何ですか。",intent:"学習への主体性と継続力を確かめています。"},
+      {q:"あなたの長所と、それが表れた経験を教えてください。",intent:"自己理解と、具体例で語る力を見ています。"},
+      {q:"得意科目と、その理由を教えてください。",intent:"学びの動機づけと、専攻との適合を見ています。"}],
+    経験:[
+      {q:"探究活動やグループ学習で取り組んだことを教えてください。",intent:"課題設定力と、学問的な思考プロセスを見ています。"},
+      {q:"困難にぶつかった経験と、どう乗り越えたかを教えてください。",intent:"粘り強さと課題解決の姿勢を確かめています。"},
+      {q:"最近読んだ本や、関心のあるニュースを教えてください。",intent:"知的好奇心と、日常的な情報への感度を見ています。"}],
+    価値観:[
+      {q:"学ぶ上で、あなたが大切にしていることは何ですか。",intent:"学習観と、大学での学びへの適応力を見ています。"},
+      {q:"あなたの短所は何ですか。どう向き合っていますか。",intent:"自己認識の正直さと改善姿勢を見ています。"}],
+    将来性:[
+      {q:"大学で具体的に何を学び、どう深めたいですか。",intent:"学修計画の具体性を確かめています。"},
+      {q:"卒業後、どのような進路を考えていますか。",intent:"学びと将来の接続が描けているかを見ています。"}],
+    対応力:[
+      {q:"今のお話について、もう少し具体的に教えてもらえますか。",intent:"深掘りに耐えられる実体験があるかを確かめています。"},
+      {q:"本学部の学びは楽ではありませんが、続けられますか。",intent:"覚悟と、学びの実態を理解しているかを見ています。"},
+      {q:"あなたが本学部で学ぶことで、どんな貢献ができますか。",intent:"自分の強みを場に活かす発想があるかを見ています。"}]
+  }
+};
+const FLOW={
+  基礎:["動機","自己PR","経験","価値観","将来性","動機","自己PR"],
+  標準:["動機","自己PR","経験","価値観","将来性","経験","対応力"],
+  実践:["動機","自己PR","経験","対応力","価値観","将来性","対応力"]
+};
+function pick(arr,used){
+  const rest=arr.filter(x=>!used.has(x.q));
+  const pool=rest.length?rest:arr;
+  const x=pool[Math.floor(Math.random()*pool.length)];used.add(x.q);return x;
+}
+function buildQuestionsRule(){
+  const bank=BANK[S.type],flow=FLOW[S.level],used=new Set(),out=[];
+  for(let i=0;i<S.count;i++){
+    const cat=flow[i%flow.length],item=pick(bank[cat],used);
+    let q=item.q;
+    if(S.target)q=q.replace("当社",S.target).replace("本学部",S.target).replace("本学",S.target);
+    out.push({q,category:cat,intent:item.intent});
+  }
+  return out;
+}
+const CONCRETE=/[0-9０-９]+|[一二三四五六七八九十百]+(年|回|人|時間|日|か月|ヶ月|度|位|番)|毎日|毎週|大会|文化祭|体育祭|部活|委員|アルバイト|検定|資格|実習|インターン|探究|課題研究/;
+const CONCLUSION_FIRST=/^(私は|わたしは|はい|結論|一番|最も|それは)/;
+const REASON=/(なぜなら|理由は|そのため|だから|ので|から(です|だ)|ためです)/;
+const EXPERIENCE=/(とき|時|際|経験|ました|でした|しました|取り組|活動)/;
+const FILLER=/(えーと|えっと|あの|まあ|なんか|えー|うーん|ちょっと|たぶん|みたいな|的な感じ)/g;
+const VAGUE=/(頑張|がんば|しっかり|きちんと|ちゃんと|いろいろ|様々|たくさん|すごく|とても)/g;
+const POSITIVE=/(挑戦|成長|貢献|学び|活か|続け|工夫|意識|大切|好き|やりがい|楽しい|興味)/;
+const FUTURE=/(たい|ていきたい|目指|将来|今後|入社後|入学後|貢献)/;
+function clamp(v){return Math.max(0,Math.min(5,Math.round(v*2)/2))}
+
+function ruleEval(q,a){
+  const t=(a||"").trim(),len=t.length,notes={},sc={},good=[],fix=[];
+  if(len===0){
+    return{scores:{結論:0,具体性:0,接続:0,論理:0,熱意:0},
+      notes:{結論:"回答がありません。",具体性:"—",接続:"—",論理:"—",熱意:"—"},
+      good:[],fix:["まずは短くてもよいので、声に出して答える練習から始めましょう。","答えられない質問こそ、事前に準備しておくべき質問です。"],
+      model:"",engine:"rule"};
+  }
+  let s1=2;const fillerN=(t.match(FILLER)||[]).length;
+  if(CONCLUSION_FIRST.test(t))s1+=1.5;
+  if(REASON.test(t))s1+=1;
+  if(len>=40&&len<=320)s1+=.5;
+  if(len>420)s1-=1;
+  if(fillerN>=3)s1-=1;
+  sc.結論=clamp(s1);
+  notes.結論=CONCLUSION_FIRST.test(t)?"冒頭で結論から入れています。良い型です。":"冒頭が前置きから始まっています。結論を先に置くと伝わりやすくなります。";
+  if(fillerN>=3)notes.結論+="／口ぐせが"+fillerN+"回あります。";
+
+  let s2=1.5;const vagueN=(t.match(VAGUE)||[]).length;
+  if(CONCRETE.test(t))s2+=1.5;
+  if(EXPERIENCE.test(t))s2+=1;
+  if(/[0-9０-９]/.test(t))s2+=1;
+  if(vagueN>=3)s2-=1;
+  if(len<40)s2-=1;
+  sc.具体性=clamp(s2);
+  notes.具体性=CONCRETE.test(t)?"具体的な場面や数字が含まれています。":"抽象的な言葉が中心です。「いつ・どこで・何をしたか」を1つ足しましょう。";
+  if(vagueN>=3)notes.具体性+="／曖昧な語が"+vagueN+"回あります。";
+
+  let s3=2;const kw=[];
+  if(S.target)S.target.split(/[\s、,・]+/).forEach(w=>{if(w.length>=2)kw.push(w)});
+  if(S.role)S.role.split(/[\s、,・]+/).forEach(w=>{if(w.length>=2)kw.push(w)});
+  const hit=kw.filter(w=>t.includes(w)).length;
+  if(hit>0)s3+=1.5;
+  if(hit>1)s3+=.5;
+  if(/(御社|貴社|貴学|こちら|この会社|この学校|この学部)/.test(t))s3+=1;
+  if(q.category==="動機"&&hit===0)s3-=1;
+  sc.接続=clamp(s3);
+  notes.接続=hit>0?"志望先や職種に触れられています。":"志望先ならではの要素が見当たりません。「ここでなければならない理由」を加えましょう。";
+
+  let s4=2;
+  const sen=t.split(/[。．.!?！？\n]/).filter(x=>x.trim().length>0);
+  const avgLen=len/Math.max(sen.length,1);
+  if(REASON.test(t))s4+=1;
+  if(sen.length>=2)s4+=.5;
+  if(avgLen<=60)s4+=1;else s4-=.5;
+  if(avgLen>90)s4-=.5;
+  if(len<30)s4-=1;
+  sc.論理=clamp(s4);
+  notes.論理="一文の平均は約"+Math.round(avgLen)+"字（"+sen.length+"文）。"+(avgLen<=60?"読みやすい長さです。":"一文が長めです。40〜60字で区切ると聞き取りやすくなります。");
+
+  let s5=2;
+  if(POSITIVE.test(t))s5+=1;
+  if(FUTURE.test(t))s5+=1;
+  if(len>=60)s5+=.5;
+  if(/(思います|かなと|たぶん|だと思う)/.test(t)&&len<80)s5-=.5;
+  sc.熱意=clamp(s5);
+  notes.熱意=POSITIVE.test(t)?"前向きな姿勢が言葉に表れています。":"意欲を示す言葉が控えめです。学びたい・貢献したいという方向を一言添えましょう。";
+
+  if(CONCLUSION_FIRST.test(t))good.push("結論から話し始められており、面接官が話の筋を追いやすい構成です。");
+  if(CONCRETE.test(t))good.push("具体的な場面や数字が入っており、話に説得力があります。");
+  if(REASON.test(t))good.push("理由を添えて説明できており、論理の道筋が見えます。");
+  if(len>=80&&len<=300)good.push("回答の長さが適切です（"+len+"字／目安60〜300字）。");
+  if(!good.length)good.push("最後まで質問に答えようとする姿勢が見えます。ここを土台に組み立てていきましょう。");
+
+  if(!CONCLUSION_FIRST.test(t))fix.push("冒頭を「私は〜です」の形にして、結論から述べる。前置きは後に回す。");
+  if(!CONCRETE.test(t))fix.push("「いつ・どこで・何をして・どうなったか」が分かる出来事を1つ入れる。数字が入るとさらに強くなる。");
+  if(hit===0&&S.target)fix.push("「"+S.target+"」ならではの要素を1つ挙げ、自分の経験と結びつける。");
+  if(!REASON.test(t))fix.push("「なぜなら」「〜だからです」を使い、結論の後に理由を続ける。");
+  if(fillerN>=3)fix.push("「えーと」等の口ぐせが"+fillerN+"回。話し始める前に一呼吸おき、無音で間をとる練習をする。");
+  if(vagueN>=3)fix.push("「頑張った」を、実際にとった行動（毎朝30分〜した等）に置き換える。");
+  if(len<40)fix.push("回答が"+len+"字と短い。結論・理由・具体例・結びの4文構成で60〜300字を目指す。");
+  if(len>400)fix.push("回答が"+len+"字と長い。要点を2つに絞り、300字以内にまとめる。");
+  if(avgLen>90)fix.push("一文が長い。1文＝1つの内容に区切って話す。");
+  if(!fix.length)fix.push("基本は押さえられています。次は同じ内容を30秒・60秒の2パターンで話せるようにする。");
+
+  const skeleton="【この質問の答え方の型】\n① 結論：私は〜です／〜だと考えます（1文で言い切る）\n② 理由：なぜなら〜だからです\n③ 具体例："+
+    (S.type==="就職"?"高校時代の〜という場面で、私は〜しました。結果〜になりました":"〜の活動で、私は〜に取り組みました。そこで〜が分かりました")+
+    "\n④ 結び："+(S.type==="就職"?"この経験を"+(S.target||"御社")+"の"+(S.role||"仕事")+"で活かしたいと考えています":"この学びを"+(S.target||"貴学")+"でさらに深めたいと考えています")+
+    "\n\n※この型に、あなた自身の経験を当てはめて組み立て直してみてください。";
+  return{scores:sc,notes,good:good.slice(0,2),fix:fix.slice(0,4),model:skeleton,engine:"rule"};
+}
+function ruleSummary(avg){
+  const keys=AXES,labels=AXIS_LABEL;
+  const sorted=keys.slice().sort((a,b)=>parseFloat(avg[a])-parseFloat(avg[b]));
+  const weak=sorted[0],weak2=sorted[1],strong=sorted[4];
+  const ov=keys.reduce((s,k)=>s+parseFloat(avg[k]),0)/5;
+  const lead=ov>=4?"全体として、面接の受け答えの型が身についています。":ov>=3?"基本の形はできています。あと一歩、具体性を足す段階です。":ov>=2?"まだ準備の途中ですが、伸びしろが大きい状態です。":"まずは、声に出して答える回数を増やすところから始めましょう。";
+  const ACT={
+    結論:"すべての回答を「私は〜です」で始める練習を、10問続けて行う。",
+    具体性:"自分の経験を3つ書き出し、それぞれ「いつ・何をした・どうなった」を数字入りで1行にまとめる。",
+    接続:"志望先の資料や募集要項を読み、心に残った点を3つメモし、自分の経験と結びつける。",
+    論理:"回答を一度紙に書き、一文が60字を超えていたら二つに割る。",
+    熱意:"回答の最後に「〜を活かしたい」「〜を学びたい」の一文を必ず添えて言い切る。"};
+  return{comment:lead+"特に「"+labels[strong]+"」（"+avg[strong]+"点）は強みとしてこのまま伸ばしてください。一方で「"+labels[weak]+"」（"+avg[weak]+"点）が最も低く、次に「"+labels[weak2]+"」（"+avg[weak2]+"点）が課題です。面接官は話のうまさではなく、話の中身が本人の経験に根ざしているかを見ています。同じ質問を日を変えて2回答えてみてください。",
+    actions:[ACT[weak],ACT[weak2],"友達か先生の前で、今日の質問のうち1問を声に出して答え、感想をもらう。"],avg};
+}
+
+/* ================================================================
+   Gemini
+   ================================================================ */
+/* ================================================================
+   Gemini API
+   モデル名は頻繁に改廃され、無料枠の有無もモデルごとに異なる。
+   そのため「一覧取得 → 実際に試験通信 → 通ったものを採用」という
+   手順で決定し、途中で使えなくなったら次の候補へ自動で切り替える。
+   ================================================================ */
+const GEMINI_BASE="https://generativelanguage.googleapis.com/v1beta";
+let geminiModel=null;          /* 現在使用中のモデル */
+let modelCandidates=[];        /* 優先順に並べた候補 */
+let modelIndex=0;              /* 候補の何番目を使っているか */
+let geminiLastError="";
+let geminiKeyValid=null;       /* キー自体が有効か（true/false/null=未判定） */
+
+/* 世代番号。gemini-3.6-flash → 306 のように数値化して比較する */
+function modelRank(n){
+  const m=n.match(/(\d+)(?:\.(\d+))?/);
+  return m?parseInt(m[1])*100+parseInt(m[2]||0):0;
+}
+
+/* 一覧から、面接評価に使えるテキスト生成モデルだけを優先順に並べる */
+function buildCandidates(names){
+  const usable=names.filter(n=>
+    /flash|pro/.test(n)&&!/(image|tts|live|audio|embedding|vision|exp|thinking)/.test(n));
+  const flash=usable.filter(n=>/flash/.test(n)&&!/lite/.test(n)).sort((a,b)=>modelRank(b)-modelRank(a));
+  const lite =usable.filter(n=>/lite/.test(n)).sort((a,b)=>modelRank(b)-modelRank(a));
+  /* 本命のflashを先に、無料枠が通りやすいlite版を控えに置く。
+     どれも429なら最後にproを試す。 */
+  const pro  =usable.filter(n=>/pro/.test(n)).sort((a,b)=>modelRank(b)-modelRank(a));
+  return [...flash,...lite,...pro];
+}
+
+/* モデルごとの生成設定。思考トークンが出力枠を食う問題への対策込み。 */
+function genConfigFor(model,maxTokens){
+  const major=parseInt((model.match(/(\d+)/)||[0,0])[1]);
+  const cfg={
+    maxOutputTokens:maxTokens||8192,
+    responseMimeType:"application/json",
+    /* 3.x は thinkingLevel、2.x は thinkingBudget。同時指定は不可 */
+    thinkingConfig: major>=3?{thinkingLevel:"low"}:{thinkingBudget:0}
+  };
+  if(major<3)cfg.temperature=0.7;   /* 3.x は既定値が推奨されている */
+  return cfg;
+}
+
+async function callModel(model,prompt,maxTokens){
+  return fetch(`${GEMINI_BASE}/models/${model}:generateContent?key=${encodeURIComponent(S.apiKey)}`,
+    {method:"POST",headers:{"Content-Type":"application/json"},
+     body:JSON.stringify({contents:[{parts:[{text:prompt}]}],
+       generationConfig:genConfigFor(model,maxTokens)})});
+}
+
+/* 候補を実際に叩いて、通るモデルを1つ決める */
+async function resolveGeminiModel(force){
+  if(geminiModel&&!force)return geminiModel;
+  geminiLastError="";
+  /* ① 一覧を取得（ここが通ればキーは有効） */
+  let names=[];
+  try{
+    const r=await fetch(`${GEMINI_BASE}/models?key=${encodeURIComponent(S.apiKey)}`);
+    if(r.status===400||r.status===403){
+      geminiKeyValid=false;
+      geminiLastError="APIキーが無効です";
+      throw new Error(geminiLastError);
+    }
+    if(r.ok){
+      geminiKeyValid=true;
+      const d=await r.json();
+      names=(d.models||[])
+        .filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent"))
+        .map(m=>m.name.replace(/^models\//,""));
+    }
+  }catch(e){
+    if(geminiKeyValid===false)throw e;
+  }
+  modelCandidates=names.length?buildCandidates(names)
+    :["gemini-flash-latest","gemini-2.5-flash","gemini-2.5-flash-lite","gemini-3.5-flash"];
+
+  /* ② 先頭から順に試験通信し、最初に通ったものを採用する */
+  let sawRateLimit=false;
+  for(let i=0;i<modelCandidates.length;i++){
+    const m=modelCandidates[i];
+    try{
+      const r=await callModel(m,'{"ping":1} とだけJSONで返してください',256);
+      if(r.ok){geminiModel=m;modelIndex=i;geminiKeyValid=true;geminiLastError="";return m;}
+      if(r.status===429){sawRateLimit=true;continue;}   /* 枠がないので次の候補へ */
+      if(r.status===400||r.status===403){geminiKeyValid=false;geminiLastError="APIキーが無効です";throw new Error(geminiLastError);}
+    }catch(e){if(geminiKeyValid===false)throw e;}
+  }
+  geminiLastError=sawRateLimit
+    ?"すべてのモデルが無料枠の上限に達しています（429）"
+    :"利用できるモデルが見つかりません";
+  throw new Error(geminiLastError);
+}
+
+/* 429などで現在のモデルが使えない場合、次の候補へ降りる */
+function downgradeModel(){
+  if(modelIndex+1<modelCandidates.length){
+    modelIndex++;geminiModel=modelCandidates[modelIndex];
+    return true;
+  }
+  return false;
+}
+
+async function gemini(prompt,opts){
+  const maxRetry=(opts&&opts.retry)??2;
+  await resolveGeminiModel();
+  let maxTokens=8192,lastErr="";
+
+  for(let attempt=0;attempt<=maxRetry;attempt++){
+    let res;
+    try{res=await callModel(geminiModel,prompt,maxTokens);}
+    catch(e){lastErr="ネットワークに接続できません";await sleep(500);continue;}
+
+    if(res.status===404){                       /* モデル廃止 */
+      if(downgradeModel()){lastErr="モデルが廃止されたため切り替えました";continue;}
+      geminiModel=null;
+      try{await resolveGeminiModel(true);continue;}catch(e){lastErr=geminiLastError;break;}
+    }
+    if(res.status===429){                       /* 枠切れ → 別モデルへ */
+      if(downgradeModel()){lastErr=`レート制限のため ${geminiModel} に切り替えました`;continue;}
+      lastErr="無料枠の上限に達しました（429）";
+      await sleep(2500);continue;
+    }
+    if(res.status===503||res.status===500){lastErr=`サーバー混雑（${res.status}）`;await sleep(800*(attempt+1));continue;}
+    if(res.status===400||res.status===403){
+      geminiKeyValid=false;
+      lastErr="APIキーが無効か、権限がありません";break;
+    }
+    if(!res.ok){const t=await res.text();lastErr=`HTTP ${res.status} ${t.slice(0,80)}`;continue;}
+
+    const d=await res.json();
+    const cand=d?.candidates?.[0];
+    const text=(cand?.content?.parts||[]).map(p=>p.text||"").join("").trim();
+    if(text){geminiLastError="";return text;}
+
+    const fr=cand?.finishReason||"";
+    const thoughts=d?.usageMetadata?.thoughtsTokenCount||0;
+    if(fr==="MAX_TOKENS"){
+      lastErr=`出力枠が思考に消費されました（思考${thoughts}トークン）`;
+      maxTokens=Math.min(maxTokens*2,32768);continue;
+    }
+    if(fr==="SAFETY"||d?.promptFeedback?.blockReason){lastErr="安全フィルタにより停止しました";break;}
+    lastErr=`応答が空（finishReason: ${fr||"不明"}）`;
+  }
+  geminiLastError=lastErr||"Gemini APIの呼び出しに失敗しました";
+  throw new Error(geminiLastError);
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+function parseJSON(t){
+  const c=t.replace(/```json/gi,"").replace(/```/g,"").trim();
+  return JSON.parse(c.slice(c.indexOf("{"),c.lastIndexOf("}")+1));
+}
+async function genQuestionsAI(){
+  const p=`あなたは高校生の${S.type}面接を20年指導してきたキャリア指導の専門家です。
+以下の条件で面接質問を${S.count}問作成してください。
+面接の種類：${S.type}／志望先：${S.target||"未指定"}／職種・分野：${S.role||"未指定"}
+アピール軸：${S.strength||"未指定"}／難易度：${S.level}
+要件：答えやすい質問から始め後半に深掘りを置く。${S.level==="実践"?"後半に1問、深掘りする圧迫寄りの質問を含める。":"高校生が答えられる範囲にする。"}各質問に面接官の評価意図を1文添える。categoryは 動機/自己PR/価値観/経験/将来性/対応力 のいずれか。
+JSON形式のみ：{"questions":[{"q":"…","category":"…","intent":"…"}]}`;
+  return parseJSON(await gemini(p)).questions;
+}
+async function evalAI(q,a){
+  const p=`あなたは高校生の面接を指導するキャリアカウンセラーです。本人が読んで納得し次に活かせる評価を返してください。抽象論は禁止です。
+【種類】${S.type}／【志望先】${S.target||"未指定"}／【職種】${S.role||"未指定"}
+【質問】${q.q}／【評価意図】${q.intent}
+【回答】"""${a||"（無回答）"}"""
+5観点を各0〜5の整数で採点し根拠を1文添える：結論＝結論の明確さ／具体性＝実体験・数字での裏づけ／接続＝志望先との結びつき／論理＝筋の通り方／熱意＝前向きさ
+good：良かった点1〜2個／fix：改善点2〜4個（どう直すかまで）／model：完成文ではなく①結論②理由③具体例④結び の骨組みを示し本人が当てはめられる形にする
+JSON形式のみ：{"scores":{"結論":n,"具体性":n,"接続":n,"論理":n,"熱意":n},"notes":{"結論":"…","具体性":"…","接続":"…","論理":"…","熱意":"…"},"good":["…"],"fix":["…"],"model":"…"}`;
+  const r=parseJSON(await gemini(p));r.engine="ai";return r;
+}
+async function summaryAI(avg){
+  const p=`高校生の模擬面接（${S.type}・志望：${S.target||"未指定"}）が終了。平均スコア：結論${avg.結論}／具体性${avg.具体性}／接続${avg.接続}／論理${avg.論理}／熱意${avg.熱意}
+comment：良い点を含め課題も率直に（4〜5文）／actions：明日からの具体的行動3つ（精神論禁止、「〜する」の形）
+JSON形式のみ：{"comment":"…","actions":["…","…","…"]}`;
+  const r=parseJSON(await gemini(p));r.avg=avg;return r;
+}
+
+/* ================================================================
+   音声：読み上げ → 自動録音 → 無音検知 → 自動確定
+   ================================================================ */
+let recog=null,recording=false,sessionActive=false,finalText="",
+    cdTimer=null,lastSpeechAt=0,hasSpokenOnce=false,autoAdvancing=false;
+
+/* ================================================================
+   音声合成：声の品質を最大限に引き出す
+   ブラウザによって利用できる声の質に大きな差がある。
+   Edgeの「Online (Natural)」系は神経ネットワーク製で非常に自然。
+   何も指定しないと低品質な旧世代の声が選ばれてしまうため、
+   明示的に順位づけして選ぶ。
+   ================================================================ */
+
+function scoreVoice(v){
+  const n=(v.name||"")+" "+(v.voiceURI||"");
+  let s=0;
+  if(/Natural/i.test(n))s+=100;        /* Edge のニューラル音声（最上位） */
+  if(/Online/i.test(n))s+=40;
+  if(/Google/i.test(n))s+=60;          /* Chrome の Google 日本語 */
+  if(/Nanami|Keita|Aoi|Mayu|Shiori|Daichi/i.test(n))s+=25;
+  if(/Kyoko|Otoya|Siri/i.test(n))s+=20; /* macOS の標準音声 */
+  if(/Haruka|Ichiro|Sayaka/i.test(n))s+=5;  /* 旧世代。最後の手段 */
+  if(/eSpeak|espeak/i.test(n))s-=100;   /* 極端に品質が低いため除外 */
+  if(v.localService===false)s+=15;      /* クラウド音声は概して高品質 */
+  return s;
+}
+function loadVoices(){
+  if(!window.speechSynthesis)return[];
+  const all=window.speechSynthesis.getVoices()||[];
+  voiceList=all.filter(v=>/^ja(-|_)?/i.test(v.lang||"")).sort((a,b)=>scoreVoice(b)-scoreVoice(a));
+  if(!chosenVoice&&voiceList.length){
+    const saved=LS.get("mensetsu_voice");
+    chosenVoice=voiceList.find(v=>v.name===saved)||voiceList[0];
+  }
+  return voiceList;
+}
+/* 声の一覧はブラウザが非同期に読み込むため、届き次第反映する */
+function populateVoiceSelect(){
+  const sel=$("voiceSel");if(!sel)return;
+  const list=loadVoices();
+  if(!list.length){sel.innerHTML='<option>読み込み中…</option>';return;}
+  sel.innerHTML=list.map((v,i)=>{
+    const quality=scoreVoice(v)>=100?"（最高品質）":scoreVoice(v)>=60?"（高品質）":
+                  scoreVoice(v)>=20?"（標準）":"（簡易）";
+    return `<option value="${esc(v.name)}"${v===chosenVoice?" selected":""}>${esc(v.name)} ${quality}</option>`;
+  }).join("");
+  const hint=$("voiceHint");
+  if(hint){
+    hint.textContent=scoreVoice(chosenVoice)>=100
+      ? "自然な読み上げが利用できます。"
+      : scoreVoice(chosenVoice)>=60
+      ? "良好な音声です。Edgeで開くとさらに自然な音声が使えます。"
+      : "簡易的な音声です。Microsoft Edge で開くと「Online (Natural)」系の自然な音声が利用できます。";
+  }
+}
+
+/* 長い文は途中で切れるブラウザがあるため、文単位に分けて順に読ませる。
+   区切りに短い間が入るので、結果的に落ち着いた口調になる。 */
+function splitForSpeech(text){
+  const parts=text.replace(/([。！？!?])/g,"$1\n").split("\n").map(s=>s.trim()).filter(Boolean);
+  const out=[];
+  parts.forEach(p=>{
+    /* それでも長い場合は読点でさらに分ける */
+    if(p.length<=60){out.push(p);return;}
+    let buf="";
+    p.split("、").forEach((seg,i,arr)=>{
+      const piece=seg+(i<arr.length-1?"、":"");
+      if((buf+piece).length>60&&buf){out.push(buf);buf=piece;}
+      else buf+=piece;
+    });
+    if(buf)out.push(buf);
+  });
+  return out.length?out:[text];
+}
+
+/* ---- 面接官の声を拾わないための三重の防御 ----
+   音声認識は音声より1〜2秒遅れて結果を返すため、
+   「読み上げ終了＝即収録開始」では面接官の声を取りこぼす。 */
+const TTS_GUARD_MS=550;        /* 読み上げ後、収録開始までの間 */
+const QUARANTINE_MS=1800;      /* 収録開始後も、この間の認識結果は捨てる */
+const TTS_WAIT_CAP_MS=6000;    /* 読み上げ待ちの上限（固まり防止） */
+let quarantineUntil=0;         /* この時刻までの認識結果は面接官の声とみなす */
+let speakGen=0;
+
+/* 文字列の正規化（音声認識は句読点を落とすため） */
+const normText=s=>String(s).replace(/[。、．，\s?？!！「」・]/g,"");
+
+/* 2文字組の重なりで類似度を測る（0〜1） */
+function similarity(a,b){
+  const na=normText(a),nb=normText(b);
+  if(na.length<4||nb.length<4)return 0;
+  const grams=s=>{const g=new Set();for(let i=0;i<s.length-1;i++)g.add(s.slice(i,i+2));return g};
+  const ga=grams(na),gb=grams(nb);
+  let hit=0;ga.forEach(x=>{if(gb.has(x))hit++});
+  return (2*hit)/(ga.size+gb.size);
+}
+/* この認識断片は面接官の発言か？ */
+function looksLikeInterviewer(fragment){
+  const q=S.questions[S.current]?.q||"";
+  const nf=normText(fragment);
+  if(nf.length<5)return false;
+  if(q){
+    if(similarity(fragment,q)>=0.5)return true;              /* 質問文とよく似ている */
+    if(nf.length>=8&&normText(q).includes(nf))return true;    /* 質問文の一部そのもの */
+  }
+  /* 定型の案内文言 */
+  return /面接を始めます|よろしくお願いします|以上で面接を終わります|お疲れさまでした/.test(nf);
+}
+
+function waitTtsSilence(){
+  return new Promise(res=>{
+    const t0=Date.now();
+    const w=()=>{
+      if(Date.now()-t0>TTS_WAIT_CAP_MS){
+        try{window.speechSynthesis&&window.speechSynthesis.cancel()}catch(_){}
+        res();return;
+      }
+      if(window.speechSynthesis&&window.speechSynthesis.speaking){setTimeout(w,120);return;}
+      res();
+    };w();
+  });
+}
+
+function speak(text,onEnd){
+  const gen=++speakGen;
+  let done=false;
+  capturing=false;
+  const finish=async()=>{
+    if(done||gen!==speakGen)return;
+    done=true;
+    if(AV.current==="speaking")AV.set("idle","");
+    await waitTtsSilence();
+    if(gen!==speakGen)return;
+    setTimeout(()=>{if(gen===speakGen&&onEnd)onEnd()},TTS_GUARD_MS);
+  };
+  if(!window.speechSynthesis){finish();return;}
+  try{window.speechSynthesis.cancel()}catch(_){}
+  loadVoices();
+
+  const chunks=splitForSpeech(text);
+  AV.set("speaking","質問中");
+  let spoken=0;
+  chunks.forEach((chunk,i)=>{
+    const u=new SpeechSynthesisUtterance(chunk);
+    u.lang="ja-JP";
+    /* 自然な声ほど標準速度が聞き取りやすい。旧世代は少し落とす。 */
+    const q=chosenVoice?scoreVoice(chosenVoice):0;
+    u.rate=q>=100?1.0:q>=60?0.98:0.94;
+    u.pitch=1.0;u.volume=1.0;
+    if(chosenVoice)u.voice=chosenVoice;
+    u.onend=()=>{spoken++;if(spoken>=chunks.length)finish()};
+    u.onerror=()=>{spoken++;if(spoken>=chunks.length)finish()};
+    try{window.speechSynthesis.speak(u)}catch(_){spoken++}
+  });
+  /* onendを返さない環境向けの保険。分割数に応じた間も見込む。 */
+  setTimeout(finish,Math.max(2200,text.length*200)+chunks.length*350+1500);
+}
+
+/* ================================================================
+   音声認識：面接開始時に一度だけ start() し、終了まで止めない。
+   質問の切替は capturing フラグで制御する（stop/start しないので
+   許可ダイアログが再度出ない）。
+   ================================================================ */
+let recogRunning=false,capturing=false,resultBaseline=0,
+    manualEdit=false,confSum=0,confCount=0;
+
+function initRecognition(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR)return false;
+  if(recog)return true;
+  recog=new SR();
+  recog.lang="ja-JP";recog.continuous=true;recog.interimResults=true;
+  /* 複数の候補を受け取り、最も確からしいものを採用して精度を上げる */
+  try{recog.maxAlternatives=3}catch(_){}
+  const box=()=>$("answerBox");
+  const status=()=>$("micStatus");
+
+  recog.onstart=()=>{recogRunning=true};
+
+  recog.onresult=e=>{
+    const speaking=window.speechSynthesis&&window.speechSynthesis.speaking;
+    /* ①収録対象外 ②読み上げ中 ③検疫期間中 はすべて破棄し、基準位置を進める。
+       検疫期間は、認識が遅れて返してくる面接官の声を捨てるためのもの。 */
+    if(!capturing||speaking||Date.now()<quarantineUntil){
+      resultBaseline=e.results.length;
+      return;
+    }
+    /* 生徒が手で直している最中は、認識結果で上書きしない */
+    if(manualEdit)return;
+    let interim="";
+    for(let i=Math.max(e.resultIndex,resultBaseline);i<e.results.length;i++){
+      const r=e.results[i];
+      /* 候補のうち確度が最も高いものを選ぶ */
+      let best=r[0];
+      for(let k=1;k<r.length;k++){
+        if((r[k].confidence||0)>(best.confidence||0))best=r[k];
+      }
+      if(r.isFinal){
+        /* 確定した断片が質問文と酷似していれば、面接官の声として捨てる */
+        if(looksLikeInterviewer(best.transcript)){resultBaseline=i+1;continue;}
+        finalText+=best.transcript;
+        if(typeof best.confidence==="number"&&best.confidence>0){
+          confSum+=best.confidence;confCount++;
+        }
+      }else if(!looksLikeInterviewer(best.transcript))interim+=best.transcript;
+    }
+    const b=box();
+    b.classList.remove("empty");
+    b.innerHTML=esc(finalText)+(interim?'<span class="interim">'+esc(interim)+"</span>":"");
+    save(finalText);updateCount();
+    if(finalText.trim()||interim.trim()){lastSpeechAt=Date.now();hasSpokenOnce=true;}
+  };
+
+  recog.onerror=e=>{
+    if(e.error==="not-allowed"||e.error==="service-not-allowed"){
+      recogRunning=false;
+      status().textContent="マイクが許可されていません。キーボード入力に切り替えます。";
+      capturing=false;enableTextInput();
+    }else if(e.error==="network"){
+      recogRunning=false;
+      status().textContent="音声認識サーバーに接続できません。キーボード入力に切り替えます。";
+      capturing=false;enableTextInput();
+    }
+    /* no-speech / aborted は無視して継続 */
+  };
+
+  /* ブラウザ側の都合で認識が終了した場合のみ再開する。
+     面接が終わっていなければ静かに復帰させる。 */
+  /* 再開の判断は監視機構に一本化する。ここでは状態の記録だけ行う。
+     こうすることで再起動のタイミングが予測可能になる。 */
+  recog.onend=()=>{recogRunning=false};
+  return true;
+}
+
+/* 面接開始時に一度だけ呼ぶ */
+function startRecognitionSession(){
+  if(!recog)return false;
+  sessionActive=true;
+  if(!recogRunning){try{recog.start();recogRunning=true}catch(_){}}
+  startWatchdog();
+  return true;
+}
+/* 面接終了時にのみ呼ぶ */
+function endRecognitionSession(){
+  sessionActive=false;capturing=false;recording=false;
+  stopWatchdog();
+  if(recog){try{recog.onend=null;recog.abort()}catch(_){}}
+  recog=null;recogRunning=false;
+}
+
+/* --- 監視機構 ---
+   認識エンジンはブラウザ側の都合で予告なく停止する。
+   収録すべき場面で止まっていたら自動で復帰させ、
+   「4問目だけ音声入力できない」といった取りこぼしを防ぐ。 */
+let watchdogTimer=null,restartCount=0,lastRestartAt=0;
+function startWatchdog(){
+  if(watchdogTimer)return;
+  let quietTicks=0;
+  watchdogTimer=setInterval(()=>{
+    if(!sessionActive||!recog)return;
+    if(capturing&&!recogRunning&&!S.busy){
+      const now=Date.now();
+      if(now-lastRestartAt<1200)return;
+      lastRestartAt=now;restartCount++;
+      try{recog.start();recogRunning=true}catch(_){}
+      const st=$("micStatus");
+      if(st&&restartCount>=3)st.textContent="音声認識が不安定です。うまく拾えない場合は回答欄に直接入力できます。";
+    }
+    /* 声は出ているのに入力が極端に小さい場合、生徒に知らせる */
+    if(capturing&&MIC.granted&&hasSpokenOnce){
+      const lv=MIC.level();
+      if(lv<MIC.noiseFloor+4)quietTicks++;else quietTicks=0;
+      const st=$("micStatus");
+      if(quietTicks>=12&&st&&!st.textContent){
+        st.textContent="声が小さいようです。マイクに近づくか、少し大きめに話してください。";
+        quietTicks=0;
+      }
+    }
+  },700);
+}
+function stopWatchdog(){
+  if(watchdogTimer)clearInterval(watchdogTimer);
+  watchdogTimer=null;
+}
+
+/* --- 質問ごとの収録開始（認識は止めない） --- */
+async function startRec(auto){
+  const status=$("micStatus");
+  if(!recog&&!initRecognition()){
+    status.textContent="このブラウザは音声認識に非対応です。キーボード入力に切り替えます。";
+    enableTextInput();return;
+  }
+  if(!MIC.granted){
+    const ok=await MIC.acquire();
+    if(!ok){status.textContent="マイクを使用できません。キーボード入力に切り替えます。";enableTextInput();return;}
+  }
+  await MIC.resume();
+  startRecognitionSession();
+
+  /* 読み上げが残っていれば終わるまで待つ（上限付きなので必ず進む） */
+  if(window.speechSynthesis&&window.speechSynthesis.speaking){
+    AV.set("speaking","質問中");
+    await waitTtsSilence();
+    await new Promise(r=>setTimeout(r,TTS_GUARD_MS));
+  }
+
+  finalText=(S.answers[S.current]?.text||"");
+  if(finalText&&!finalText.endsWith(" "))finalText+=" ";
+  hasSpokenOnce=false;
+
+  recording=true;capturing=true;
+  /* 収録開始から一定時間は、遅れて届く面接官の声を捨てる */
+  quarantineUntil=Date.now()+QUARANTINE_MS;
+  /* 収録に入る直前で、エンジンが確実に動いていることを確認する */
+  if(!recogRunning){try{recog.start();recogRunning=true}catch(_){}}
+  VU.show();
+  /* 認識ミスをその場で直せるよう、音声入力中も編集を許可する。
+     編集を始めたら、その質問では認識結果による上書きを止める。 */
+  const abox=$("answerBox");
+  abox.contentEditable="true";
+  abox.oninput=()=>{
+    manualEdit=true;
+    save(abox.textContent);updateCount();
+    lastSpeechAt=Date.now();hasSpokenOnce=true;
+  };
+  const b=$("recBtn");
+  b.classList.add("active");b.textContent="■ 停止";
+  AV.set("listening","傾聴中");
+  /* 検疫中は「まだ話さないで」と示し、明けてから発話を促す */
+  status.textContent="準備しています…";
+  setTimeout(()=>{
+    if(!capturing)return;
+    status.textContent=auto?"どうぞお話しください。話し終えると自動で次に進みます。":"収録中… 停止を押すと終了します。";
+  },QUARANTINE_MS);
+  lastSpeechAt=Date.now();
+  if(auto&&S.mode==="auto"&&isAuto())armSilence();
+}
+
+/* --- 無音検知（VAD：実時間の音量で判定する） ---
+   音声認識の結果イベントは1〜3秒遅れて届くため、それだけに頼ると
+   確定タイミングがぶれる。マイクの入力レベルを直接見て、
+   「声が止まった瞬間」を正確に捉える。 */
+function armSilence(){
+  clearSilence();
+  let voiceSince=0;          /* 連続して声が検出された時間 */
+  let lastVoiceAt=Date.now();
+  cdTimer=setInterval(()=>{
+    if(!recording)return;
+    const cd=$("countdown");
+
+    /* 読み上げ中と検疫期間中は判定しない（面接官の声で誤作動するため） */
+    if((window.speechSynthesis&&window.speechSynthesis.speaking)||Date.now()<quarantineUntil){
+      lastVoiceAt=Date.now();
+      cd.textContent="準備しています…";
+      return;
+    }
+
+    const voice=MIC.granted?MIC.isVoice():false;
+    if(voice){
+      voiceSince+=200;
+      lastVoiceAt=Date.now();
+      /* 0.4秒以上続けて声が出たら「話し始めた」と確定する。
+         咳やノイズの一瞬の突出では反応しない。 */
+      if(voiceSince>=400)hasSpokenOnce=true;
+    }else{
+      voiceSince=0;
+    }
+    /* 認識イベントが届いた場合もそちらを優先して有効化する */
+    if(Date.now()-lastSpeechAt<1500){hasSpokenOnce=true;lastVoiceAt=Date.now();}
+
+    const idle=Date.now()-lastVoiceAt;
+    const limit=hasSpokenOnce?S.silence:35000;
+    const remain=Math.ceil((limit-idle)/1000);
+
+    if(!hasSpokenOnce){
+      cd.textContent="お話が始まるのをお待ちしています…";
+    }else if(remain<=3&&remain>0){
+      cd.textContent="あと "+remain+" 秒で回答を確定します（話し続ければ延長されます）";
+    }else{
+      cd.textContent="";
+    }
+
+    if(idle>=limit){
+      /* 認識結果がまだ届いていない可能性があるため、少し待ってから確定する */
+      clearSilence();
+      setTimeout(()=>{if(recording)autoConfirm()},TAIL_WAIT_MS);
+    }
+  },200);
+}
+/* 認識結果の取りこぼしを防ぐため、確定前に置く待ち時間 */
+const TAIL_WAIT_MS=900;
+function clearSilence(){
+  if(cdTimer)clearInterval(cdTimer);
+  cdTimer=null;
+  $("countdown").textContent="";
+}
+function autoConfirm(){
+  if(autoAdvancing||S.busy)return;
+  autoAdvancing=true;
+  const txt=(S.answers[S.current]?.text||"").trim();
+  if(!txt&&!hasSpokenOnce){
+    /* 30秒無音：スキップ扱いで先へ */
+    $("micStatus").textContent="回答がないため次に進みます。";
+  }
+  stopRec();
+  setTimeout(()=>{autoAdvancing=false;proceed();},450);
+}
+function stopRec(){
+  recording=false;capturing=false;clearSilence();VU.hide();
+  /* 認識エンジンは止めない（止めると再開時に許可を求められるため）。
+     収録フラグを落とすだけで、以降の音声は破棄される。 */
+  const b=$("recBtn");
+  b.classList.remove("active");b.textContent="● 録音";
+  if(AV.current==="listening")AV.set("idle","");
+}
+function enableTextInput(){
+  const box=$("answerBox");
+  box.contentEditable="true";
+  if(box.classList.contains("empty")){box.textContent="";box.classList.remove("empty")}
+  box.oninput=()=>{save(box.textContent);updateCount()};
+  box.focus();
+  $("recBtn").style.display="none";
+  AV.set("listening","傾聴中");
+}
+function save(t){S.answers[S.current]={text:t}}
+
+/* 万一、面接官の質問文が回答に混入した場合に取り除く保険。
+   音声認識は句読点を落とすため、記号を除いた形で照合する。 */
+function stripInterviewerVoice(text,question){
+  if(!text||!question)return text;
+  const norm=s=>s.replace(/[。、．，\s?？!！「」]/g,"");
+  const nq=norm(question);
+  if(nq.length<6)return text;
+  let out=text;
+  /* 質問文の先頭12文字以上が回答冒頭に現れていたら、その分を削る */
+  for(let len=Math.min(nq.length,40);len>=12;len-=2){
+    const frag=nq.slice(0,len);
+    const nOut=norm(out);
+    const idx=nOut.indexOf(frag);
+    if(idx>=0&&idx<10){
+      /* 正規化前の文字列上で対応位置を数え直して切り取る */
+      let count=0,cut=0;
+      for(let i=0;i<out.length;i++){
+        if(!/[。、．，\s?？!！「」]/.test(out[i]))count++;
+        if(count>idx+len){cut=i;break;}
+      }
+      if(cut>0){out=out.slice(cut).trim();break;}
+    }
+  }
+  return out;
+}
+function updateCount(){
+  const n=(S.answers[S.current]?.text||"").trim().length;
+  $("charCount").textContent=n?n+"字"+(n<40?"（短め・目安60〜300字）":n>400?"（長め・300字以内に）":"（適切な長さ）"):"";
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+/* ================================================================
+   進行制御
+   ================================================================ */
+$("startBtn").onclick=async()=>{
+  S.target=$("target").value.trim();
+  S.role=$("role").value.trim();
+  S.strength=$("strength").value.trim();
+  const err=$("setupErr");err.style.display="none";
+  const btn=$("startBtn");
+  btn.disabled=true;
+  /* 音声合成をユーザー操作起点で解錠（自動再生制限対策） */
+  if(window.speechSynthesis){
+    const w=new SpeechSynthesisUtterance(" ");w.volume=0;window.speechSynthesis.speak(w);
+  }
+  /* ★マイク許可はここで1回だけ取得し、面接終了まで保持する */
+  if(S.input==="voice"){
+    btn.textContent="マイクを確認しています…";
+    const ok=await MIC.acquire();
+    if(!ok){
+      S.input="text";
+      err.textContent="マイクを使用できないため、キーボード入力モードで進めます。ブラウザのアドレスバーからマイクを許可すると音声で練習できます。";
+      err.style.display="block";
+    }else{
+      initRecognition();
+      startRecognitionSession();
+      /* 教室の環境音を測り、無音判定のしきい値をその場に合わせる */
+      btn.textContent="環境音を測定中…";
+      await MIC.calibrate(1200);
+      setTimeout(()=>{const m=$("micLive");if(m)m.style.display="block"},300);
+    }
+  }
+  btn.textContent="質問を準備中…";
+  try{
+    if(S.apiKey){
+      try{
+        await resolveGeminiModel();
+        S.questions=await genQuestionsAI();
+      }
+      catch(e){
+        S.questions=buildQuestionsRule();
+        err.innerHTML="AIに接続できなかったため、内蔵の質問バンクとルールベース評価で進めます。<br>"+
+          "<span style='font-size:12px'>理由："+esc(geminiLastError||e.message)+
+          "／設定画面の「接続テスト」で詳しい原因を確認できます。</span>";
+        err.style.display="block";
+      }
+    }else S.questions=buildQuestionsRule();
+    S.current=0;S.answers=[];S.evals=[];S.confidences=[];
+    $("setup").style.display="none";
+    $("room").style.display="block";
+    AV.init();VU.build();refreshEngineLive();
+    buildProgress();
+    $("room").scrollIntoView({behavior:"smooth"});
+    /* 開始の挨拶 → 第1問へ */
+    AV.set("speaking","質問中");
+    $("qText").textContent="それでは、面接を始めます。よろしくお願いします。";
+    speak("それでは、面接を始めます。よろしくお願いします。",()=>{setTimeout(renderQ,600)});
+  }catch(e){
+    err.textContent="質問の準備に失敗しました。（"+e.message+"）";err.style.display="block";
+  }
+  btn.disabled=false;btn.textContent="面接をはじめる";
+};
+
+function buildProgress(){
+  const p=$("progress");p.innerHTML="";
+  S.questions.forEach(()=>p.appendChild(document.createElement("span")));
+}
+function updateProgress(){
+  document.querySelectorAll("#progress span").forEach((s,i)=>{
+    s.className=i<S.current?"done":(i===S.current?"current":"");
+  });
+}
+function renderQ(){
+  const q=S.questions[S.current];
+  $("qCounter").textContent=`質問 ${S.current+1} / ${S.questions.length}`;
+  $("qCat").textContent=q.category;
+  $("qText").textContent=q.q;
+  $("qIntent").innerHTML="<b>面接官の視点：</b>"+q.intent;
+  $("qIntent").classList.remove("show");
+  const box=$("answerBox");
+  box.contentEditable="false";box.oninput=null;
+  box.classList.add("empty");box.textContent="ここに回答が入ります。";
+  $("recBtn").style.display="";
+  $("micStatus").textContent="";
+  $("charCount").textContent="";
+  $("countdown").textContent="";
+  finalText="";manualEdit=false;confSum=0;confCount=0;
+  updateProgress();
+  $("nextBtn").textContent=
+    S.current===S.questions.length-1?"確定して結果を見る →":"確定して次へ →";
+
+  const autoOn=isAuto();
+  if(S.input==="text"){
+    speak(q.q,()=>enableTextInput());
+  }else{
+    speak(q.q,()=>{if(autoOn)startRec(true);else AV.set("idle","")});
+  }
+}
+
+/* 回答確定 → 評価 → 次へ */
+async function proceed(){
+  if(S.busy)return;
+  const q=S.questions[S.current];
+  if(!q)return;                    /* 質問がまだ準備できていない場合は何もしない */
+  S.busy=true;
+  stopRec();if(window.speechSynthesis)window.speechSynthesis.cancel();
+  let a=(S.answers[S.current]?.text||"").trim();
+  /* 面接官の声が混入していた場合は取り除いてから評価する */
+  a=stripInterviewerVoice(a,q.q);
+  S.answers[S.current]={text:a};
+  /* 音声認識の確度を記録しておき、結果画面で信頼度を示す */
+  S.confidences[S.current]=(confCount&&!manualEdit)?(confSum/confCount):null;
+  AV.set("thinking","確認中");
+  $("room").style.display="none";
+  $("loader").style.display="block";
+  $("loaderMsg").textContent=`質問${S.current+1}の回答を分析しています…`;
+  let ev,usedFallback=false;
+  if(S.apiKey&&a){
+    try{ev=await evalAI(q,a)}
+    catch(e){
+      ev=ruleEval(q,a);usedFallback=true;
+      ev.aiError=geminiLastError||e.message;   /* 失敗理由を結果画面に残す */
+    }
+  }
+  else{await new Promise(r=>setTimeout(r,420));ev=ruleEval(q,a)}
+  S.evals[S.current]=ev;
+  refreshEngineLive(usedFallback?"fallback":null);
+  if(S.current<S.questions.length-1){
+    S.current++;
+    $("loader").style.display="none";
+    $("room").style.display="block";
+    S.busy=false;
+    renderQ();
+  }else{
+    await showResults();S.busy=false;
+  }
+}
+
+$("nextBtn").onclick=()=>proceed();
+$("replayBtn").onclick=()=>{
+  const wasRec=recording;stopRec();
+  speak(S.questions[S.current].q,()=>{if(wasRec||isAuto())startRec(true)});
+};
+$("intentBtn").onclick=()=>$("qIntent").classList.toggle("show");
+$("recBtn").onclick=()=>{recording?stopRec():startRec(isAuto())};
+$("clearBtn").onclick=()=>{
+  const wasRec=recording;stopRec();finalText="";
+  const box=$("answerBox");
+  const ed=box.contentEditable==="true";
+  box.textContent=ed?"":"ここに回答が入ります。";
+  if(!ed)box.classList.add("empty");
+  S.answers[S.current]={text:""};updateCount();
+  if(wasRec)startRec(isAuto());
+};
+$("autoChk").onchange=e=>{
+  S.mode=e.target.checked?"auto":"manual";
+  if(e.target.checked&&recording)armSilence();
+  else clearSilence();
+};
+
+/* ================================================================
+   結果
+   ================================================================ */
+async function showResults(){
+  $("loaderMsg").textContent="総合講評をまとめています…";
+  const keys=AXES,avg={};
+  keys.forEach(k=>{avg[k]=(S.evals.reduce((s,e)=>s+(e.scores[k]||0),0)/S.evals.length).toFixed(1)});
+  let sum;
+  if(S.apiKey){try{sum=await summaryAI(avg)}catch(e){sum=ruleSummary(avg)}}
+  else{await new Promise(r=>setTimeout(r,380));sum=ruleSummary(avg)}
+  $("loader").style.display="none";
+  const E=$("eval");E.style.display="block";E.innerHTML="";
+  const ov=(keys.reduce((s,k)=>s+parseFloat(avg[k]),0)/5).toFixed(1);
+  const sc=document.createElement("div");sc.className="summary-card";
+  sc.innerHTML=`<h3>総合講評</h3>
+    <div class="overall"><span class="big">${ov}</span><span class="max">/ 5.0</span></div>
+    <div class="radar-wrap">${radar(avg)}</div><p>${esc(sum.comment)}</p>
+    <div style="margin-top:20px;font-family:'Hiragino Kaku Gothic ProN',sans-serif;font-size:12px;letter-spacing:.12em;color:#e8d9a8">明日からのアクション</div>
+    <ul class="action-list">${(sum.actions||[]).map(a=>`<li>${esc(a)}</li>`).join("")}</ul>`;
+  E.appendChild(sc);
+  const labels=AXIS_LABEL;
+  S.questions.forEach((q,i)=>{
+    const ev=S.evals[i];
+    const rows=keys.map(k=>{const v=ev.scores[k]||0;
+      return `<div class="score-item"><div class="score-head"><span class="name">${labels[k]}</span><span class="val">${v}/5</span></div>
+      <div class="meter"><i style="width:${v/5*100}%"></i></div>
+      ${ev.notes&&ev.notes[k]?`<div class="score-note">${esc(ev.notes[k])}</div>`:""}</div>`}).join("");
+    const c=document.createElement("div");c.className="eval-card";
+    c.innerHTML=`<div class="eval-q">Q${i+1}. ${esc(q.q)}<span class="badge ${ev.engine==="ai"?"ai":"rule"}">${ev.engine==="ai"?"AI評価":"ルール評価"}</span></div>
+      ${ev.aiError?`<div style="font-family:'Hiragino Kaku Gothic ProN',sans-serif;font-size:11px;color:#a4432f;margin-bottom:8px">AI接続に失敗したためルールベースで採点：${esc(ev.aiError)}</div>`:""}
+      <div class="eval-a">あなたの回答：${esc(S.answers[i]?.text?.trim()||"（無回答）")}
+        ${(()=>{const c=S.confidences[i];
+          if(c===null||c===undefined)return "";
+          const pct=Math.round(c*100);
+          const col=pct>=85?"#3f7a4a":pct>=70?"#b08d3f":"#a4432f";
+          const msg=pct>=85?"明瞭に聞き取れました":pct>=70?"おおむね聞き取れました":"聞き取りにくい箇所がありました";
+          return `<div style="margin-top:8px;font-size:11px;color:${col}">音声認識の確度 ${pct}％（${msg}）</div>`;
+        })()}
+      </div>
+      <div class="scores">${rows}</div>
+      ${ev.good?.length?`<div class="fb-block good"><h4>良かった点</h4><ul>${ev.good.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`:""}
+      ${ev.fix?.length?`<div class="fb-block fix"><h4>改善のヒント</h4><ul>${ev.fix.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`:""}
+      ${ev.model?`<div class="fb-block"><h4>答え方の型</h4><div class="model-ans"><span class="tag">これに自分の経験を当てはめて組み立て直しましょう</span>${esc(ev.model).replace(/\n/g,"<br>")}</div></div>`:""}`;
+    E.appendChild(c);
+  });
+  const fb=document.createElement("div");fb.className="foot-btns";
+  fb.innerHTML=`<button id="againBtn">もう一度練習する</button><button id="printBtn">結果を印刷／PDF保存</button>`;
+  E.appendChild(fb);
+  $("againBtn").onclick=()=>location.reload();
+  $("printBtn").onclick=()=>window.print();
+  E.scrollIntoView({behavior:"smooth"});
+  /* 面接が完全に終わったので認識とマイクを解放する */
+  endRecognitionSession();VU.hide();MIC.release();
+  const ml=$("micLive");if(ml)ml.style.display="none";
+  speak("以上で面接を終わります。お疲れさまでした。");
+}
+function radar(avg){
+  const keys=AXES,lbl=AXIS_SHORT;
+  const cx=110,cy=105,R=70,n=5;let grid="",axes="",lbls="";
+  for(let g=1;g<=5;g++){
+    const pts=keys.map((k,i)=>{const a=-Math.PI/2+i*2*Math.PI/n;
+      return `${cx+Math.cos(a)*R*g/5},${cy+Math.sin(a)*R*g/5}`}).join(" ");
+    grid+=`<polygon points="${pts}" fill="none" stroke="#4a5a55" stroke-width="0.5"/>`;
+  }
+  keys.forEach((k,i)=>{const a=-Math.PI/2+i*2*Math.PI/n;
+    axes+=`<line x1="${cx}" y1="${cy}" x2="${cx+Math.cos(a)*R}" y2="${cy+Math.sin(a)*R}" stroke="#4a5a55" stroke-width="0.5"/>`;
+    lbls+=`<text x="${cx+Math.cos(a)*(R+15)}" y="${cy+Math.sin(a)*(R+15)+4}" fill="#c9d0c5" font-size="10" text-anchor="middle" font-family="sans-serif">${lbl[i]}</text>`});
+  const pts=keys.map((k,i)=>{const v=parseFloat(avg[k]||0)/5,a=-Math.PI/2+i*2*Math.PI/n;
+    return `${cx+Math.cos(a)*R*v},${cy+Math.sin(a)*R*v}`}).join(" ");
+  return `<svg width="220" height="210" viewBox="0 0 220 210">${grid}${axes}
+    <polygon points="${pts}" fill="rgba(232,217,168,.28)" stroke="#e8d9a8" stroke-width="2"/>${lbls}</svg>`;
+}
+/* ページを閉じる・再読込する際にマイクとタイマーを確実に解放する */
+window.addEventListener("pagehide",()=>{
+  try{
+    clearSilence();
+    if(AV.blinkTimer)clearTimeout(AV.blinkTimer);
+    AV.stopMouth&&AV.stopMouth();AV.stopNod&&AV.stopNod();
+    if(window.speechSynthesis)window.speechSynthesis.cancel();
+    endRecognitionSession();MIC.release();
+  }catch(_){}
+});
+</script>
+</body>
+</html>
