@@ -70,6 +70,46 @@ input:focus,textarea:focus{outline:2px solid var(--accent-soft);outline-offset:-
 .avatar-state.idle{color:#8a9690}
 
 .q-col{flex:1;min-width:0}
+
+/* ===== 本番モード（音声入力時）=====
+   面接官を大きく中央に据え、質問文は表示しない。
+   Chromebook（画面高768px前後）でもスクロールせず全体が収まるよう、
+   アバターの大きさは画面の高さを基準に決める。 */
+.stage.live{padding:2.2vh 28px 1.8vh}
+.stage.live .stage-inner{flex-direction:column;align-items:center;gap:.8vh}
+.stage.live .avatar-col{flex:none}
+.stage.live .avatar-frame{
+  width:min(46vh,400px);height:min(46vh,400px);border-width:3px}
+.stage.live #avatarSvg{width:90%;height:90%}
+.stage.live .avatar-name{font-size:13px;margin-top:1vh;letter-spacing:.16em}
+.stage.live .avatar-state{font-size:12px;margin-top:2px}
+.stage.live .q-col{width:100%;max-width:520px;text-align:center}
+.stage.live .q-text{display:none}          /* 質問文は出さない */
+.stage.live .q-meta{justify-content:center;gap:18px;margin-bottom:0}
+.stage.live .q-intent{text-align:left}
+.stage.live .vu{margin-top:1vh}
+.stage.live .countdown{text-align:center;min-height:15px}
+
+/* 面接中は、画面に収めるため周辺の要素を圧縮・非表示にする */
+body.interviewing header{display:none}
+body.interviewing .wrap{padding-bottom:14px}
+body.interviewing .room{margin-top:14px}
+body.interviewing .progress-bar{margin-bottom:12px}
+body.interviewing .notice{display:none}
+body.interviewing .answer-box{
+  min-height:64px;max-height:16vh;overflow-y:auto;margin-top:12px;padding:11px 15px}
+body.interviewing .controls{margin-top:10px}
+body.interviewing .ctrl{padding:9px 15px}
+
+/* 画面が低い端末ではさらに詰める */
+@media(max-height:700px){
+  .stage.live .avatar-frame{width:min(42vh,320px);height:min(42vh,320px)}
+  .stage.live .avatar-name{font-size:12px}
+  body.interviewing .answer-box{min-height:56px;max-height:14vh}
+}
+@media(max-width:680px){
+  .stage.live .avatar-frame{width:min(34vh,240px);height:min(34vh,240px)}
+}
 .q-meta{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:11px;letter-spacing:.2em;color:#b08d3f;display:flex;justify-content:space-between;margin-bottom:12px}
 .q-text{font-size:20px;line-height:1.65;letter-spacing:.03em;color:var(--paper);min-height:66px}
 .q-intent{font-family:"Hiragino Kaku Gothic ProN",sans-serif;font-size:11.5px;color:#a8b5ad;margin-top:12px;padding-top:11px;border-top:1px dashed rgba(201,191,168,.28);display:none;line-height:1.7}
@@ -263,6 +303,15 @@ input:focus,textarea:focus{outline:2px solid var(--accent-soft);outline-offset:-
     <div class="hint" id="micHint">音声認識はChrome / Edge推奨。マイクの許可が必要です。<br>※ファイルを直接開くと音声認識が使えない場合があります。その際は自動でキーボード入力に切り替わります。</div>
   </div>
 
+  <div class="field">
+    <label>面接官の追い質問（深掘り）</label>
+    <div class="seg" id="segFollow">
+      <button data-v="on" class="on">あり（本番に近い）</button>
+      <button data-v="off">なし</button>
+    </div>
+    <div class="hint">回答が抽象的なとき、面接官が「具体的にはどのような場面でしたか」と一歩踏み込みます。<br>※AI評価（Gemini APIキー設定時）でのみ動作します。</div>
+  </div>
+
   <button class="btn-primary" id="startBtn">面接をはじめる</button>
   <div id="originWarn" style="display:none;margin-top:14px;padding:14px 16px;border-radius:3px;background:#fdf7e8;border:1px solid #b08d3f;font-family:'Hiragino Kaku Gothic ProN',sans-serif;font-size:12.5px;color:#7a5c50;line-height:1.85"></div>
   <div class="err" id="setupErr"></div>
@@ -272,7 +321,7 @@ input:focus,textarea:focus{outline:2px solid var(--accent-soft);outline-offset:-
 <section class="room" id="room">
   <div class="progress-bar" id="progress"></div>
 
-  <div class="stage">
+  <div class="stage" id="stage">
     <div class="stage-inner">
       <div class="avatar-col">
         <div class="avatar-frame" id="avatarFrame">
@@ -336,7 +385,7 @@ input:focus,textarea:focus{outline:2px solid var(--accent-soft);outline-offset:-
 
       <div class="q-col">
         <div class="q-meta">
-          <span id="qCounter">質問 1</span>
+          <span><span id="qCounter">質問 1</span><span id="followTag" style="display:none;margin-left:10px;padding:2px 9px;border-radius:11px;font-size:10px;background:#8c3b34;color:#fff;letter-spacing:.05em">追い質問</span></span>
           <span><span id="engineLive" style="margin-right:12px;padding:2px 9px;border-radius:11px;font-size:10px;letter-spacing:.05em"></span><span id="qCat">動機</span></span>
         </div>
         <div class="q-text" id="qText">…</div>
@@ -394,7 +443,12 @@ const AXIS_LABEL={結論:"結論の明確さ",具体性:"具体性",接続:"志�
 const AXIS_SHORT=["結論","具体","接続","論理","熱意"];
 
 const S={type:"就職",target:"",role:"",strength:"",count:5,level:"基礎",input:"voice",
-  mode:"auto",silence:3000,questions:[],current:0,answers:[],evals:[],confidences:[],apiKey:"",busy:false};
+  mode:"auto",silence:3000,questions:[],current:0,answers:[],evals:[],confidences:[],apiKey:"",busy:false,
+  /* 追い質問（深掘り）関連 */
+  followEnabled:true,   /* 機能のON/OFF */
+  questionReady:false,  /* 質問が画面に出て回答可能か */
+  followState:null,     /* null または "answering" */
+  followQ:""};          /* 現在の追い質問文 */
 
 const LS={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},
   set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},
@@ -413,6 +467,12 @@ function bindSeg(id,key,cb){
 bindSeg("segType","type");bindSeg("segCount","count");bindSeg("segLevel","level");
 bindSeg("segSilence","silence");
 bindSeg("segInput","input",v=>{$("micHint").style.display=v==="voice"?"block":"none"});
+document.querySelectorAll("#segFollow button").forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll("#segFollow button").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on");S.followEnabled=(b.dataset.v==="on");
+  };
+});
 bindSeg("segMode","mode",v=>{
   $("modeHint").textContent = v==="auto"
     ? "質問の読み上げ後に自動で録音を開始し、無音が続くと自動で確定して次の質問に進みます。"
@@ -429,20 +489,13 @@ function refreshBadge(){
 /* 面接画面の常時インジケーター。実際に使われているエンジンを表示する */
 function refreshEngineLive(state){
   const el=$("engineLive");if(!el)return;
-  const on=S.apiKey&&geminiModel;
-  if(state==="fallback"){
-    el.style.background="#8c5a2b";el.style.color="#fff";
-    el.textContent="ルールベース評価（AI接続失敗）";
-  }else if(on){
-    el.style.background="#2f5d50";el.style.color="#fff";
-    el.textContent="AI評価 "+geminiModel;
-  }else if(S.apiKey){
-    el.style.background="#b08d3f";el.style.color="#fff";
-    el.textContent="AI接続を確認中";
-  }else{
-    el.style.background="rgba(201,191,168,.22)";el.style.color="#c9d0c5";
-    el.textContent="ルールベース評価";
-  }
+  /* 状態 → [背景色, 文字色, ラベル] */
+  const view =
+    state==="fallback"      ? ["#8c5a2b","#fff","ルールベース評価（AI接続失敗）"] :
+    (S.apiKey&&geminiModel) ? ["#2f5d50","#fff","AI評価 "+geminiModel] :
+    S.apiKey                ? ["#b08d3f","#fff","AI接続を確認中"] :
+                              ["rgba(201,191,168,.22)","#c9d0c5","ルールベース評価"];
+  [el.style.background,el.style.color,el.textContent]=view;
 }
 (function(){const k=LS.get("mensetsu_key");if(k){S.apiKey=k;$("apiKey").value=k;}refreshBadge();})();
 
@@ -1121,14 +1174,33 @@ async function genQuestionsAI(){
 JSON形式のみ：{"questions":[{"q":"…","category":"…","intent":"…"}]}`;
   return parseJSON(await gemini(p)).questions;
 }
-async function evalAI(q,a){
+async function evalAI(q,a,opts){
+  const isFollowPhase=opts&&opts.followAnswer;
+  /* 追い質問に答えた後は、元の回答と合わせて1つの評価にまとめる */
+  const answerBlock=isFollowPhase
+    ? `【最初の回答】"""${a||"（無回答）"}"""
+【面接官の追い質問】${opts.followQ}
+【追い質問への回答】"""${opts.followAnswer||"（無回答）"}"""
+※2つの回答を合わせて1つの回答とみなして評価してください。追い質問で具体性が補われた場合は、その分を具体性の点数に反映させてください。`
+    : `【回答】"""${a||"（無回答）"}"""`;
+
+  /* 深掘りの要否は、まだ追い質問をしていない場合のみ判定させる */
+  const followRule=isFollowPhase?"":`
+さらに、この回答に対して面接官が深掘りすべきかを判定してください。
+・needFollow：具体性が不足している場合（実体験・場面・数字がなく、抽象的な言葉で終わっている）にtrue。
+  具体的なエピソードが既に語られている場合はfalse。
+・followQ：needFollowがtrueのとき、実際の面接官が発する短い追い質問を1つ。
+  「もう少し具体的に教えてください」のような漠然としたものではなく、
+  回答内の言葉を拾って「〇〇とおっしゃいましたが、具体的にどのような場面でしたか」のように、
+  本人が答えるべき的を明確にした問いにする。40字以内。`;
+
   const p=`あなたは高校生の面接を指導するキャリアカウンセラーです。本人が読んで納得し次に活かせる評価を返してください。抽象論は禁止です。
 【種類】${S.type}／【志望先】${S.target||"未指定"}／【職種】${S.role||"未指定"}
 【質問】${q.q}／【評価意図】${q.intent}
-【回答】"""${a||"（無回答）"}"""
+${answerBlock}
 5観点を各0〜5の整数で採点し根拠を1文添える：結論＝結論の明確さ／具体性＝実体験・数字での裏づけ／接続＝志望先との結びつき／論理＝筋の通り方／熱意＝前向きさ
-good：良かった点1〜2個／fix：改善点2〜4個（どう直すかまで）／model：完成文ではなく①結論②理由③具体例④結び の骨組みを示し本人が当てはめられる形にする
-JSON形式のみ：{"scores":{"結論":n,"具体性":n,"接続":n,"論理":n,"熱意":n},"notes":{"結論":"…","具体性":"…","接続":"…","論理":"…","熱意":"…"},"good":["…"],"fix":["…"],"model":"…"}`;
+good：良かった点1〜2個／fix：改善点2〜4個（どう直すかまで）／model：完成文ではなく①結論②理由③具体例④結び の骨組みを示し本人が当てはめられる形にする${followRule}
+JSON形式のみ：{"scores":{"結論":n,"具体性":n,"接続":n,"論理":n,"熱意":n},"notes":{"結論":"…","具体性":"…","接続":"…","論理":"…","熱意":"…"},"good":["…"],"fix":["…"],"model":"…"${followRule?',"needFollow":true/false,"followQ":"…"':""}}`;
   const r=parseJSON(await gemini(p));r.engine="ai";return r;
 }
 async function summaryAI(avg){
@@ -1224,29 +1296,55 @@ let quarantineUntil=0;         /* この時刻までの認識結果は面接官�
 let speakGen=0;
 
 /* 文字列の正規化（音声認識は句読点を落とすため） */
-const normText=s=>String(s).replace(/[。、．，\s?？!！「」・]/g,"");
+/* ---- 面接官の声を回答から排除する処理をまとめたもの ----
+   音声認識は句読点を落とすため、比較は記号を除いた形で行う。 */
+const Voice={
+  /* 記号を除いた比較用の文字列にする */
+  norm:s=>String(s||"").replace(/[。、．，\s?？!！「」・]/g,""),
 
-/* 2文字組の重なりで類似度を測る（0〜1） */
-function similarity(a,b){
-  const na=normText(a),nb=normText(b);
-  if(na.length<4||nb.length<4)return 0;
-  const grams=s=>{const g=new Set();for(let i=0;i<s.length-1;i++)g.add(s.slice(i,i+2));return g};
-  const ga=grams(na),gb=grams(nb);
-  let hit=0;ga.forEach(x=>{if(gb.has(x))hit++});
-  return (2*hit)/(ga.size+gb.size);
-}
-/* この認識断片は面接官の発言か？ */
-function looksLikeInterviewer(fragment){
-  const q=S.questions[S.current]?.q||"";
-  const nf=normText(fragment);
-  if(nf.length<5)return false;
-  if(q){
-    if(similarity(fragment,q)>=0.5)return true;              /* 質問文とよく似ている */
-    if(nf.length>=8&&normText(q).includes(nf))return true;    /* 質問文の一部そのもの */
+  /* 2文字組の重なりで類似度を測る（0〜1） */
+  similarity(a,b){
+    const na=this.norm(a),nb=this.norm(b);
+    if(na.length<4||nb.length<4)return 0;
+    const grams=s=>{const g=new Set();for(let i=0;i<s.length-1;i++)g.add(s.slice(i,i+2));return g};
+    const ga=grams(na),gb=grams(nb);
+    let hit=0;ga.forEach(x=>{if(gb.has(x))hit++});
+    return (2*hit)/(ga.size+gb.size);
+  },
+
+  /* 定型の案内文言（開始・終了の挨拶） */
+  GREETING:/面接を始めます|よろしくお願いします|以上で面接を終わります|お疲れさまでした/,
+
+  /* この認識断片は面接官の発言か？（収録中に1件ずつ判定する） */
+  isInterviewer(fragment,question){
+    const nf=this.norm(fragment);
+    if(nf.length<5)return false;
+    const q=question??(S.followState==="answering"?S.followQ:S.questions[S.current]?.q)??"";
+    if(q){
+      if(this.similarity(fragment,q)>=0.5)return true;          /* 質問文とよく似ている */
+      if(nf.length>=8&&this.norm(q).includes(nf))return true;    /* 質問文の一部そのもの */
+    }
+    return this.GREETING.test(nf);
+  },
+
+  /* 確定した回答の冒頭に質問文が残っていた場合に切り落とす（最後の保険） */
+  strip(text,question){
+    if(!text||!question)return text;
+    const nq=this.norm(question);
+    if(nq.length<6)return text;
+    for(let len=Math.min(nq.length,40);len>=12;len-=2){
+      const idx=this.norm(text).indexOf(nq.slice(0,len));
+      if(idx<0||idx>=10)continue;
+      /* 正規化前の文字列で対応する位置を数え直して切る */
+      let count=0;
+      for(let i=0;i<text.length;i++){
+        if(this.norm(text[i]))count++;
+        if(count>idx+len)return text.slice(i).trim();
+      }
+    }
+    return text;
   }
-  /* 定型の案内文言 */
-  return /面接を始めます|よろしくお願いします|以上で面接を終わります|お疲れさまでした/.test(nf);
-}
+};
 
 function waitTtsSilence(){
   return new Promise(res=>{
@@ -1338,12 +1436,12 @@ function initRecognition(){
       }
       if(r.isFinal){
         /* 確定した断片が質問文と酷似していれば、面接官の声として捨てる */
-        if(looksLikeInterviewer(best.transcript)){resultBaseline=i+1;continue;}
+        if(Voice.isInterviewer(best.transcript)){resultBaseline=i+1;continue;}
         finalText+=best.transcript;
         if(typeof best.confidence==="number"&&best.confidence>0){
           confSum+=best.confidence;confCount++;
         }
-      }else if(!looksLikeInterviewer(best.transcript))interim+=best.transcript;
+      }else if(!Voice.isInterviewer(best.transcript))interim+=best.transcript;
     }
     const b=box();
     b.classList.remove("empty");
@@ -1445,7 +1543,7 @@ async function startRec(auto){
     await new Promise(r=>setTimeout(r,TTS_GUARD_MS));
   }
 
-  finalText=(S.answers[S.current]?.text||"");
+  finalText=currentText();
   if(finalText&&!finalText.endsWith(" "))finalText+=" ";
   hasSpokenOnce=false;
 
@@ -1538,7 +1636,7 @@ function clearSilence(){
 function autoConfirm(){
   if(autoAdvancing||S.busy)return;
   autoAdvancing=true;
-  const txt=(S.answers[S.current]?.text||"").trim();
+  const txt=currentText().trim();
   if(!txt&&!hasSpokenOnce){
     /* 30秒無音：スキップ扱いで先へ */
     $("micStatus").textContent="回答がないため次に進みます。";
@@ -1563,35 +1661,22 @@ function enableTextInput(){
   $("recBtn").style.display="none";
   AV.set("listening","傾聴中");
 }
-function save(t){S.answers[S.current]={text:t}}
+function save(t){
+  if(!S.answers[S.current])S.answers[S.current]={text:""};
+  /* 追い質問に答えている最中は、元の回答を壊さず別に保存する */
+  if(S.followState==="answering")S.answers[S.current].followText=t;
+  else S.answers[S.current].text=t;
+}
+/* 現在入力中の本文を取り出す（通常回答／追い質問の回答を切り替える） */
+function currentText(){
+  const a=S.answers[S.current];if(!a)return "";
+  return (S.followState==="answering"?a.followText:a.text)||"";
+}
 
 /* 万一、面接官の質問文が回答に混入した場合に取り除く保険。
    音声認識は句読点を落とすため、記号を除いた形で照合する。 */
-function stripInterviewerVoice(text,question){
-  if(!text||!question)return text;
-  const norm=s=>s.replace(/[。、．，\s?？!！「」]/g,"");
-  const nq=norm(question);
-  if(nq.length<6)return text;
-  let out=text;
-  /* 質問文の先頭12文字以上が回答冒頭に現れていたら、その分を削る */
-  for(let len=Math.min(nq.length,40);len>=12;len-=2){
-    const frag=nq.slice(0,len);
-    const nOut=norm(out);
-    const idx=nOut.indexOf(frag);
-    if(idx>=0&&idx<10){
-      /* 正規化前の文字列上で対応位置を数え直して切り取る */
-      let count=0,cut=0;
-      for(let i=0;i<out.length;i++){
-        if(!/[。、．，\s?？!！「」]/.test(out[i]))count++;
-        if(count>idx+len){cut=i;break;}
-      }
-      if(cut>0){out=out.slice(cut).trim();break;}
-    }
-  }
-  return out;
-}
 function updateCount(){
-  const n=(S.answers[S.current]?.text||"").trim().length;
+  const n=currentText().trim().length;
   $("charCount").textContent=n?n+"字"+(n<40?"（短め・目安60〜300字）":n>400?"（長め・300字以内に）":"（適切な長さ）"):"";
 }
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
@@ -1645,7 +1730,14 @@ $("startBtn").onclick=async()=>{
     S.current=0;S.answers=[];S.evals=[];S.confidences=[];
     $("setup").style.display="none";
     $("room").style.display="block";
+    S.questionReady=false;
     AV.init();VU.build();refreshEngineLive();
+    /* 音声モードは本番同様、面接官を大きく出して質問文は表示しない */
+    /* 音声モードは本番同様、面接官を大きく出して質問文は表示しない。
+       あわせて画面全体を圧縮し、Chromebookでもスクロール不要にする。 */
+    const live=(S.input==="voice");
+    $("stage").classList.toggle("live",live);
+    document.body.classList.toggle("interviewing",live);
     buildProgress();
     $("room").scrollIntoView({behavior:"smooth"});
     /* 開始の挨拶 → 第1問へ */
@@ -1667,61 +1759,126 @@ function updateProgress(){
     s.className=i<S.current?"done":(i===S.current?"current":"");
   });
 }
-function renderQ(){
+/* 質問（通常／追い質問）を画面に出して読み上げる。
+   両者は「文言」と「バッジの有無」しか違わないため1つにまとめている。 */
+function renderQuestion(follow){
   const q=S.questions[S.current];
+  const text  = follow ? S.followQ : q.q;
+  const cat   = follow ? "深掘り"  : q.category;
+  const intent= follow ? "用意した答えの先に、実体験の裏づけがあるかを確かめています。" : q.intent;
+
+  if(!follow){S.followState=null;S.followQ="";}
+  S.questionReady=true;
+  $("followTag").style.display=follow?"inline-block":"none";
   $("qCounter").textContent=`質問 ${S.current+1} / ${S.questions.length}`;
-  $("qCat").textContent=q.category;
-  $("qText").textContent=q.q;
-  $("qIntent").innerHTML="<b>面接官の視点：</b>"+q.intent;
+  $("qCat").textContent=cat;
+  $("qText").textContent=text;
+  $("qIntent").innerHTML="<b>面接官の視点：</b>"+intent;
   $("qIntent").classList.remove("show");
+  $("nextBtn").textContent=
+    (!follow&&S.current===S.questions.length-1)?"確定して結果を見る →":"確定して次へ →";
+  $("recBtn").style.display="";
+  resetAnswerArea();
+  if(!follow)updateProgress();
+
+  const autoOn=isAuto();
+  speak(text,()=>{
+    if(S.input==="text")enableTextInput();
+    else if(autoOn)startRec(true);
+    else AV.set("idle","");
+  });
+}
+const renderQ=()=>renderQuestion(false);
+const renderFollowUp=()=>renderQuestion(true);
+
+/* 回答欄と収録状態を初期化する */
+function resetAnswerArea(){
   const box=$("answerBox");
   box.contentEditable="false";box.oninput=null;
   box.classList.add("empty");box.textContent="ここに回答が入ります。";
-  $("recBtn").style.display="";
   $("micStatus").textContent="";
   $("charCount").textContent="";
   $("countdown").textContent="";
   finalText="";manualEdit=false;confSum=0;confCount=0;
-  updateProgress();
-  $("nextBtn").textContent=
-    S.current===S.questions.length-1?"確定して結果を見る →":"確定して次へ →";
-
-  const autoOn=isAuto();
-  if(S.input==="text"){
-    speak(q.q,()=>enableTextInput());
-  }else{
-    speak(q.q,()=>{if(autoOn)startRec(true);else AV.set("idle","")});
-  }
 }
 
-/* 回答確定 → 評価 → 次へ */
-async function proceed(){
-  if(S.busy)return;
-  const q=S.questions[S.current];
-  if(!q)return;                    /* 質問がまだ準備できていない場合は何もしない */
-  S.busy=true;
-  stopRec();if(window.speechSynthesis)window.speechSynthesis.cancel();
-  let a=(S.answers[S.current]?.text||"").trim();
-  /* 面接官の声が混入していた場合は取り除いてから評価する */
-  a=stripInterviewerVoice(a,q.q);
-  S.answers[S.current]={text:a};
-  /* 音声認識の確度を記録しておき、結果画面で信頼度を示す */
-  S.confidences[S.current]=(confCount&&!manualEdit)?(confSum/confCount):null;
+
+/* 評価を1件実行する。AI評価に失敗したらルールベースへ退避し、理由を残す。 */
+async function runEvaluation(q,answer,followOpts){
+  if(S.apiKey&&answer){
+    try{
+      const ev=await evalAI(q,answer,followOpts);
+      refreshEngineLive(null);
+      return ev;
+    }catch(e){
+      const merged=followOpts?(answer+" "+followOpts.followAnswer).trim():answer;
+      const ev=ruleEval(q,merged);
+      ev.aiError=geminiLastError||e.message;   /* 失敗理由を結果画面に残す */
+      refreshEngineLive("fallback");
+      return ev;
+    }
+  }
+  await new Promise(r=>setTimeout(r,420));    /* 一瞬で切り替わると不自然なため間を置く */
+  const ev=ruleEval(q,answer);
+  refreshEngineLive(null);
+  return ev;
+}
+
+/* 分析中の画面に切り替える */
+function showAnalyzing(msg){
   AV.set("thinking","確認中");
   $("room").style.display="none";
   $("loader").style.display="block";
-  $("loaderMsg").textContent=`質問${S.current+1}の回答を分析しています…`;
-  let ev,usedFallback=false;
-  if(S.apiKey&&a){
-    try{ev=await evalAI(q,a)}
-    catch(e){
-      ev=ruleEval(q,a);usedFallback=true;
-      ev.aiError=geminiLastError||e.message;   /* 失敗理由を結果画面に残す */
-    }
+  $("loaderMsg").textContent=msg;
+}
+
+/* 回答確定 → 評価 → 追い質問または次へ */
+async function proceed(){
+  if(S.busy)return;
+  /* 質問がまだ画面に出ていない間（開始の挨拶中など）は確定させない */
+  if(!S.questionReady)return;
+  const q=S.questions[S.current];
+  if(!q)return;
+  S.busy=true;
+  stopRec();if(window.speechSynthesis)window.speechSynthesis.cancel();
+
+  const inFollow=S.followState==="answering";
+  /* 面接官の声が混入していた場合は取り除いてから評価する */
+  const text=Voice.strip(currentText().trim(),inFollow?S.followQ:q.q);
+  save(text);
+
+  if(inFollow){
+    /* 最初の回答と追い回答をまとめて1つの評価にする */
+    showAnalyzing("回答をまとめて分析しています…");
+    const base=S.answers[S.current].text||"";
+    const ev=await runEvaluation(q,base,{followQ:S.followQ,followAnswer:text});
+    ev.followQ=S.followQ;ev.followAnswer=text;
+    S.evals[S.current]=ev;
+    S.followState=null;S.followQ="";
+    return advanceOrFinish();
   }
-  else{await new Promise(r=>setTimeout(r,420));ev=ruleEval(q,a)}
+
+  /* 音声認識の確度を記録しておき、結果画面で信頼度を示す */
+  S.confidences[S.current]=(confCount&&!manualEdit)?(confSum/confCount):null;
+  showAnalyzing(`質問${S.current+1}の回答を分析しています…`);
+  const ev=await runEvaluation(q,text);
   S.evals[S.current]=ev;
-  refreshEngineLive(usedFallback?"fallback":null);
+
+  /* AIが「具体性が足りない」と判断したら、その場で追い質問を出す */
+  if(S.followEnabled&&ev.engine==="ai"&&ev.needFollow&&ev.followQ&&text&&!S.answers[S.current].followText){
+    S.followState="answering";
+    S.followQ=String(ev.followQ).slice(0,80);
+    $("loader").style.display="none";
+    $("room").style.display="block";
+    S.busy=false;
+    renderFollowUp();
+    return;
+  }
+  return advanceOrFinish();
+}
+
+/* 次の質問へ進む、または結果を表示する */
+async function advanceOrFinish(){
   if(S.current<S.questions.length-1){
     S.current++;
     $("loader").style.display="none";
@@ -1732,6 +1889,8 @@ async function proceed(){
     await showResults();S.busy=false;
   }
 }
+
+/* 追い質問の画面を描画して読み上げる */
 
 $("nextBtn").onclick=()=>proceed();
 $("replayBtn").onclick=()=>{
@@ -1746,7 +1905,7 @@ $("clearBtn").onclick=()=>{
   const ed=box.contentEditable==="true";
   box.textContent=ed?"":"ここに回答が入ります。";
   if(!ed)box.classList.add("empty");
-  S.answers[S.current]={text:""};updateCount();
+  save("");updateCount();
   if(wasRec)startRec(isAuto());
 };
 $("autoChk").onchange=e=>{
@@ -1766,6 +1925,7 @@ async function showResults(){
   if(S.apiKey){try{sum=await summaryAI(avg)}catch(e){sum=ruleSummary(avg)}}
   else{await new Promise(r=>setTimeout(r,380));sum=ruleSummary(avg)}
   $("loader").style.display="none";
+  document.body.classList.remove("interviewing");   /* 結果は通常表示に戻す */
   const E=$("eval");E.style.display="block";E.innerHTML="";
   const ov=(keys.reduce((s,k)=>s+parseFloat(avg[k]),0)/5).toFixed(1);
   const sc=document.createElement("div");sc.className="summary-card";
@@ -1785,6 +1945,12 @@ async function showResults(){
     const c=document.createElement("div");c.className="eval-card";
     c.innerHTML=`<div class="eval-q">Q${i+1}. ${esc(q.q)}<span class="badge ${ev.engine==="ai"?"ai":"rule"}">${ev.engine==="ai"?"AI評価":"ルール評価"}</span></div>
       ${ev.aiError?`<div style="font-family:'Hiragino Kaku Gothic ProN',sans-serif;font-size:11px;color:#a4432f;margin-bottom:8px">AI接続に失敗したためルールベースで採点：${esc(ev.aiError)}</div>`:""}
+      ${ev.followQ?`<div style="margin:10px 0 0;padding:12px 14px;background:#f0ece0;border-left:3px solid #8c3b34;border-radius:3px;font-family:'Hiragino Kaku Gothic ProN',sans-serif;font-size:12.5px;line-height:1.85">
+        <span style="font-size:10.5px;color:#8c3b34;letter-spacing:.08em">面接官の追い質問</span><br>
+        <b style="color:#3d4a5c">${esc(ev.followQ)}</b><br>
+        <span style="font-size:10.5px;color:#8a8272;letter-spacing:.08em">あなたの回答</span><br>
+        <span style="color:#7a7264">${esc(ev.followAnswer?.trim()||"（無回答）")}</span>
+      </div>`:""}
       <div class="eval-a">あなたの回答：${esc(S.answers[i]?.text?.trim()||"（無回答）")}
         ${(()=>{const c=S.confidences[i];
           if(c===null||c===undefined)return "";
