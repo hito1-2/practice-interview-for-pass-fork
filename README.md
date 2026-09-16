@@ -3,9 +3,9 @@
 FORK元のkihirayo-design氏にはこの場にて感謝を申し上げます。
 
 # FORKとしての指針
-## カスタマイズしたこと
+## カスタマイズしたこと/Customized
 まだありません
-## カスタマイズしたいこと
+## カスタマイズしたいこと/To Do
 - JS，CSSの分離
 - Gemini以外のAIのAPI利用
 - Windows環境下での，[棒読みちゃん](https://chi.usamimi.info/Program/Application/BouyomiChan/)対応
